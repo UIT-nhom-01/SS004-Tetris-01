@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(tetris_core
+    src/core/ConsoleRenderer.cpp
     src/core/Game.cpp
     src/core/GameBoard.cpp
     src/core/Input.cpp

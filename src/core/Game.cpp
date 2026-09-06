@@ -1,49 +1,150 @@
 #include "core/Game.hpp"
 
+#include <chrono>
+#include <cstdio>
 #include <iostream>
-#include <string>
+#include <thread>
+
+#if defined(_WIN32)
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace tetris {
 
-Game::Game()
-    : activePiece_{{{4, 0}, {5, 0}, {4, 1}, {5, 1}}}, running_(true) {
-    // TEMPORARY:
-    // This O-shaped piece is used only to test the core game loop.
-    // It will be replaced by Huy's Tetromino module.
+namespace {
+
+bool standardOutputIsTerminal() {
+#if defined(_WIN32)
+    return _isatty(_fileno(stdout)) != 0;
+#else
+    return isatty(STDOUT_FILENO) != 0;
+#endif
 }
 
-void Game::run() {
-    render();
-
-    while (running_) {
-        std::cout << "Action: " << std::flush;
-        const InputAction action = input_.readAction();
-        handleInput(action);
-
-        if (running_ && action != InputAction::None) {
-            update();
-            render();
+/// Uses a separate terminal screen so rendered frames never enter scrollback.
+class TerminalScreen {
+public:
+    TerminalScreen() : active_(standardOutputIsTerminal()) {
+        if (active_) {
+            std::cout << "\x1B[?1049h\x1B[?25l" << std::flush;
         }
     }
 
+    ~TerminalScreen() {
+        restore();
+    }
+
+    TerminalScreen(const TerminalScreen&) = delete;
+    TerminalScreen& operator=(const TerminalScreen&) = delete;
+
+    void restore() {
+        if (active_) {
+            std::cout << "\x1B[?25h\x1B[?1049l" << std::flush;
+            active_ = false;
+        }
+    }
+
+private:
+    bool active_;
+};
+
+// Keeps the core loop runnable until Huy's Tetromino generator is integrated.
+ActivePiece makeTemporaryActivePiece() {
+    return ActivePiece{
+        TetrominoType::O,
+        RotationState::Spawn,
+        {4, 0},
+        {{{4, 0}, {5, 0}, {4, 1}, {5, 1}}}};
+}
+
+// Exercises the preview contract without implementing random piece generation.
+ActivePiece makeTemporaryNextPiece() {
+    return ActivePiece{
+        TetrominoType::T,
+        RotationState::Spawn,
+        {4, 1},
+        {{{3, 1}, {4, 1}, {5, 1}, {4, 2}}}};
+}
+
+}  // namespace
+
+Game::Game()
+    : activePiece_(makeTemporaryActivePiece()),
+      nextPiece_(makeTemporaryNextPiece()) {}
+
+void Game::run() {
+    using Clock = std::chrono::steady_clock;
+
+    TerminalScreen terminalScreen;
+    render();
+    // steady_clock prevents system clock changes from affecting gravity timing.
+    auto nextFall = Clock::now() + std::chrono::milliseconds(FALL_INTERVAL_MS);
+
+    while (running_) {
+        bool stateChanged = false;
+        const InputAction action = input_.pollAction();
+        if (action != InputAction::None) {
+            stateChanged = handleInput(action);
+        }
+
+        const auto now = Clock::now();
+        if (action == InputAction::Restart) {
+            // A restarted piece always receives a complete first fall interval.
+            nextFall = now + std::chrono::milliseconds(FALL_INTERVAL_MS);
+        } else if (running_ && now >= nextFall) {
+            stateChanged = tick() || stateChanged;
+            nextFall = now + std::chrono::milliseconds(FALL_INTERVAL_MS);
+        }
+
+        if (running_ && stateChanged) {
+            render();
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(LOOP_SLEEP_MS));
+    }
+
+    terminalScreen.restore();
     std::cout << "Game closed.\n";
 }
 
 bool Game::moveCurrentPiece(int dx, int dy) {
-    // Boundary-only validation keeps the core demonstration working.
-    // TODO(Tu): delegate full movement validation to Collision after integration.
-    for (const Position& block : activePiece_.blocks) {
-        if (!board_.isInside(block.x + dx, block.y + dy)) {
+    const ActivePiece candidate = translated(activePiece_, dx, dy);
+
+    // TODO(Tu): replace boundary-only validation with
+    // Collision::canPlace(board_, candidate) during integration.
+    for (const Position& block : candidate.blocks) {
+        if (!board_.isInside(block.x, block.y)) {
             return false;
         }
     }
 
-    for (Position& block : activePiece_.blocks) {
-        block.x += dx;
-        block.y += dy;
+    activePiece_ = candidate;
+    return true;
+}
+
+bool Game::tick() {
+    if (moveCurrentPiece(0, 1)) {
+        return true;
     }
 
-    return true;
+    // TODO(Tu): lock the piece and clear completed lines.
+    // TODO(Gam): update the score using the cleared-line count.
+    // TODO(Huy): promote nextPiece_ and generate the following preview piece.
+    // TODO(Khanh): set Game Over when the next piece cannot spawn.
+    return false;
+}
+
+void Game::restart() {
+    board_.reset();
+    activePiece_ = makeTemporaryActivePiece();
+    nextPiece_ = makeTemporaryNextPiece();
+    running_ = true;
+
+    // TODO(Gam): reset Scoring during integration.
+    // TODO(Khanh): reset GameState during integration.
+    // TODO(Huy): replace both temporary pieces using the Tetromino generator.
 }
 
 const GameBoard& Game::board() const {
@@ -54,57 +155,46 @@ const ActivePiece& Game::activePiece() const {
     return activePiece_;
 }
 
-void Game::handleInput(InputAction action) {
-    switch (action) {
-        case InputAction::MoveLeft:
-            moveCurrentPiece(-1, 0);
-            break;
-        case InputAction::MoveRight:
-            moveCurrentPiece(1, 0);
-            break;
-        case InputAction::MoveDown:
-            moveCurrentPiece(0, 1);
-            break;
-        case InputAction::Rotate:
-            // TODO(Huy): integrate Tetromino rotation.
-            break;
-        case InputAction::Quit:
-            running_ = false;
-            break;
-        case InputAction::None:
-            break;
-    }
+const ActivePiece& Game::nextPiece() const {
+    return nextPiece_;
 }
 
-void Game::update() {
-    // TODO(Tu): integrate collision, piece locking, and line clearing.
-    // TODO(Gam): integrate Scoring.
-    // TODO(Khanh): integrate Game Over detection and Restart.
+bool Game::handleInput(InputAction action) {
+    switch (action) {
+        case InputAction::MoveLeft:
+            return moveCurrentPiece(-1, 0);
+        case InputAction::MoveRight:
+            return moveCurrentPiece(1, 0);
+        case InputAction::MoveDown:
+            return moveCurrentPiece(0, 1);
+        case InputAction::Rotate:
+            // TODO(Huy): integrate Tetromino rotation.
+            return false;
+        case InputAction::Restart:
+            restart();
+            return true;
+        case InputAction::Quit:
+            running_ = false;
+            return false;
+        case InputAction::None:
+            return false;
+    }
+
+    return false;
 }
 
 void Game::render() const {
-    std::cout << '\n' << '+' << std::string(GameBoard::WIDTH, '-') << "+\n";
-
-    for (int y = 0; y < board_.height(); ++y) {
-        std::cout << '|';
-        for (int x = 0; x < board_.width(); ++x) {
-            bool activeBlock = false;
-            for (const Position& block : activePiece_.blocks) {
-                if (block.x == x && block.y == y) {
-                    activeBlock = true;
-                    break;
-                }
-            }
-
-            const bool filledCell = board_.getCell(x, y) == CellState::Filled;
-            std::cout << ((activeBlock || filledCell) ? '#' : '.');
-        }
-        std::cout << "|\n";
+    // Redraw in place within the alternate screen owned by run().
+    const bool useTerminalFeatures = standardOutputIsTerminal();
+    if (useTerminalFeatures) {
+        std::cout << "\x1B[2J\x1B[H";
     }
 
-    std::cout << '+' << std::string(GameBoard::WIDTH, '-') << "+\n";
-    std::cout << "Score: 0\n";  // TODO(Gam): integrate Scoring.
-    std::cout << "Controls: A left, D right, S down, W rotate, Q quit\n";
+    // TODO(Gam): replace zero with Scoring::getScore() during integration.
+    // TODO(Khanh): replace false with GameState::isGameOver().
+    std::cout << renderer_.buildFrame(
+        board_, activePiece_, nextPiece_, 0, false, useTerminalFeatures)
+              << std::flush;
 }
 
 }  // namespace tetris
