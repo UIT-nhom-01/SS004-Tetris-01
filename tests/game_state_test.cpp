@@ -149,7 +149,25 @@ void testGameplayStopsAfterGameOver() {
 void testRestartResetsBoardScoreAndState() {
     tetris::Game game;
     tetris::Collision collision;
+
+    // Seed the bottom row so the initial O piece completes one line. Game only
+    // exposes a read-only board because production mutation belongs to
+    // Collision; this controlled test setup removes constness from a non-const
+    // Game instance without changing the production API.
+    auto& board = const_cast<tetris::GameBoard&>(game.board());
+    for (int x = 0; x < 8; ++x) {
+        board.setCell(x, 19, tetris::CellState::J);
+    }
+    expect(game.moveCurrentPiece(4, 18),
+           "score reset setup must move the O piece into the final gap");
+    expect(game.tick(),
+           "locking the O piece must complete and clear the bottom row");
+    expect(game.score() == 100,
+           "score reset setup must create a non-zero score");
+
     playUntilGameOver(game);
+    expect(game.score() == 100,
+           "stacking after the setup must preserve the earned score");
 
     game.restart();
 
