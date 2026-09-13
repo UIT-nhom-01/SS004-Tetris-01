@@ -5,7 +5,7 @@ namespace tetris {
 /// Owns the score for one game session.
 class Scoring {
 public:
-    /// Clears the accumulated score when restarting the game.
+    /// Resets accumulated score to zero for a new or restarted game session.
     void reset();
 
     /// Adds points for clearing `lineCount` rows in one lock operation.
