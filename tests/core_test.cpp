@@ -235,7 +235,7 @@ void testConsoleRendererLayoutAndColors() {
         std::count(plainFrame.begin(), plainFrame.end(), '\n') == 22,
         "a frame must match the board's 20 rows plus two borders");
     expect(
-        plainFrame.find('\n') == 59,
+        plainFrame.find('\n') == 94,
         "board and side panel must have a stable one-line width");
     expect(
         plainFrame.find("SCORE") != std::string::npos &&
@@ -245,6 +245,9 @@ void testConsoleRendererLayoutAndColors() {
         plainFrame.find("NEXT PIECE") != std::string::npos &&
             plainFrame.find("CONTROLS") != std::string::npos,
         "side panel must include preview and controls sections");
+    expect(
+        plainFrame.find("Restart: R     Quit: Q") != std::string::npos,
+        "restart and quit controls must share the compact final row");
     expect(
         plainFrame.find("\x1B[") == std::string::npos,
         "plain rendering must not contain ANSI escape codes");

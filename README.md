@@ -312,7 +312,7 @@ sequenceDiagram
 | Input trên macOS/Linux | `termios`, `select()` và `read()`; giải mã ANSI escape sequence |
 | Terminal rendering | Board và sidebar cố định trong alternate screen buffer |
 | Tetromino colors | ANSI background color; fallback `[]` khi output không phải TTY |
-| Kích thước frame | 59 cột x 22 dòng |
+| Kích thước frame | 94 cột x 22 dòng |
 | Test runner | CTest |
 
 ### Shared data contract
@@ -392,7 +392,7 @@ nằm tại [`docs/QA_GAMEPLAY_REPORT.md`](docs/QA_GAMEPLAY_REPORT.md).
 | --- | --- |
 | C++ compiler | Hỗ trợ C++17 |
 | CMake | 3.16 trở lên |
-| Terminal | Tối thiểu 59 cột x 22 dòng; hỗ trợ ANSI để hiển thị màu |
+| Terminal | Tối thiểu 94 cột x 22 dòng; hỗ trợ ANSI để hiển thị màu |
 
 ### Build
 
