@@ -277,6 +277,33 @@ void testConsoleRendererLayoutAndColors() {
         "the side panel must support the future Game Over state");
 }
 
+void testConsoleRendererHidesBlockedSpawnAfterGameOver() {
+    tetris::GameBoard board;
+    board.setCell(4, 0, tetris::CellState::Z);
+
+    const tetris::ActivePiece blockedPiece{
+        tetris::TetrominoType::O,
+        tetris::RotationState::Spawn,
+        {4, 0},
+        {{{4, 0}, {5, 0}, {4, 1}, {5, 1}}}};
+    const tetris::ActivePiece nextPiece{
+        tetris::TetrominoType::T,
+        tetris::RotationState::Spawn,
+        {4, 1},
+        {{{3, 1}, {4, 1}, {5, 1}, {4, 2}}}};
+
+    const tetris::ConsoleRenderer renderer;
+    const std::string frame = renderer.buildFrame(
+        board, blockedPiece, nextPiece, 0, true, true);
+
+    expect(
+        frame.find("\x1B[41m") != std::string::npos,
+        "Game Over must reveal the locked block that prevented spawning");
+    expect(
+        frame.find("\x1B[43m") == std::string::npos,
+        "Game Over must not draw the blocked active piece over the board");
+}
+
 void testFeatureHeadersCompileAsContracts() {
     static_assert(std::is_default_constructible_v<tetris::Tetromino>);
     static_assert(std::is_default_constructible_v<tetris::Collision>);
@@ -297,6 +324,7 @@ int main() {
         testGeneratedPieceMovement();
         testTickAndRestart();
         testConsoleRendererLayoutAndColors();
+        testConsoleRendererHidesBlockedSpawnAfterGameOver();
         testFeatureHeadersCompileAsContracts();
     } catch (const std::exception& error) {
         std::cerr << "Core test failed: " << error.what() << '\n';
