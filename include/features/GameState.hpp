@@ -18,7 +18,4 @@ private:
     bool gameOver_{false};
 };
 
-// TODO(Khanh): implement Game Over and Restart state in
-// src/features/game_state/.
-
 }  // namespace tetris
