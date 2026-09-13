@@ -4,6 +4,7 @@
 #include "features/Collision.hpp"
 #include "features/Tetromino.hpp"
 
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -12,6 +13,25 @@ namespace {
 
 void expect(bool condition, const std::string& message) {
     if (!condition) throw std::runtime_error(message);
+}
+
+int maxBlockY(const tetris::ActivePiece& piece) {
+    return std::max_element(
+               piece.blocks.begin(),
+               piece.blocks.end(),
+               [](const auto& lhs, const auto& rhs) { return lhs.y < rhs.y; })
+        ->y;
+}
+
+bool boardHasLockedBlocks(const tetris::GameBoard& board) {
+    for (int y = 0; y < board.height(); ++y) {
+        for (int x = 0; x < board.width(); ++x) {
+            if (tetris::isOccupied(board.getCell(x, y))) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void testCanPlaceOnEmptyBoard() {
@@ -203,15 +223,22 @@ void testClearTopLineEmptiesReplacementCells() {
 
 void testGameTickLocksPieceAndPromotesNextPiece() {
     tetris::Game game;
+    const tetris::ActivePiece initialPiece = game.activePiece();
     const tetris::ActivePiece expectedNext = game.nextPiece();
+    tetris::ActivePiece lockedPiece = initialPiece;
+    bool pieceWasLocked = false;
 
     for (int tick = 0; tick < tetris::GameBoard::HEIGHT; ++tick) {
+        const tetris::ActivePiece pieceBeforeTick = game.activePiece();
         game.tick();
-        if (game.activePiece().type == expectedNext.type) {
+        if (boardHasLockedBlocks(game.board())) {
+            lockedPiece = pieceBeforeTick;
+            pieceWasLocked = true;
             break;
         }
     }
 
+    expect(pieceWasLocked, "gravity must eventually lock the active piece");
     expect(game.activePiece().type == expectedNext.type,
            "blocked piece must switch to the next piece");
     expect(game.activePiece().rotation == expectedNext.rotation,
@@ -221,21 +248,18 @@ void testGameTickLocksPieceAndPromotesNextPiece() {
     expect(game.activePiece().blocks == expectedNext.blocks,
            "promoted piece must preserve its blocks");
 
-    const tetris::Position lockedBlocks[] = {
-        {4, 18},
-        {5, 18},
-        {4, 19},
-        {5, 19},
-    };
-    for (const tetris::Position& block : lockedBlocks) {
-        expect(game.board().getCell(block.x, block.y) == tetris::CellState::O,
+    for (const tetris::Position& block : lockedPiece.blocks) {
+        expect(game.board().getCell(block.x, block.y) ==
+                   tetris::cellStateFor(initialPiece.type),
                "previous piece must lock before the next piece is promoted");
     }
 }
 
 void testGameMovementRejectsBlockedCandidates() {
     tetris::Game game;
-    expect(game.moveCurrentPiece(0, 18),
+    const int distanceToFloor =
+        tetris::GameBoard::HEIGHT - 1 - maxBlockY(game.activePiece());
+    expect(game.moveCurrentPiece(0, distanceToFloor),
            "piece must move to the bottom for test setup");
 
     const auto beforeBlocks = game.activePiece().blocks;

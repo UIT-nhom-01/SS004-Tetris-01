@@ -7,6 +7,7 @@
 #include "core/Types.hpp"
 #include "features/GameState.hpp"
 #include "features/Scoring.hpp"
+#include "features/Tetromino.hpp"
 
 namespace tetris {
 
@@ -49,6 +50,7 @@ private:
     GameBoard board_;
     ActivePiece activePiece_;
     ActivePiece nextPiece_;
+    Tetromino tetromino_;
     Collision collision_;
     Scoring scoring_;
     GameState gameState_;
