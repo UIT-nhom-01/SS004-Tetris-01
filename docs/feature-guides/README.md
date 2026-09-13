@@ -352,7 +352,7 @@ Sau khi nhận feature, Hùng tích hợp vào `Game` theo thứ tự:
 ```mermaid
 flowchart LR
     Receive["Nhận feature đã pass test"] --> Construct["Thêm module state vào Game"]
-    Construct --> Spawn["Thay temporary active/next bằng Tetromino::createPiece"]
+    Construct --> Spawn["Sinh active/next bằng Tetromino::createPiece"]
     Spawn --> Move["Dùng Collision cho movement/rotation"]
     Move --> Lock["Lock, clear line và cộng điểm"]
     Lock --> State["Kiểm tra Game Over"]
@@ -361,7 +361,7 @@ flowchart LR
     Render --> Regression["Chạy toàn bộ regression test"]
 ```
 
-### Điểm TODO trong core cần thay
+### Điểm tích hợp trong core
 
 | Vị trí | Integration cần thực hiện |
 | --- | --- |
@@ -374,7 +374,8 @@ flowchart LR
 | `Game::restart()` | Reset board, score, state rồi tạo active và next piece |
 | `Game::render()` | Truyền score thật và trạng thái Game Over vào `ConsoleRenderer` |
 
-Không xóa TODO trước khi logic tương ứng đã được tích hợp và có test.
+Các điểm trên chỉ được xem là hoàn tất sau khi logic tương ứng đã được tích hợp
+và có regression test.
 
 ## 9. Quy ước code
 
@@ -419,6 +420,6 @@ ctest --test-dir build-local --output-on-failure
 - [ ] Build không có warning mới.
 - [ ] Toàn bộ CTest pass.
 - [ ] Không còn debug print hoặc code tạm.
-- [ ] TODO đã hoàn thành được xóa; TODO integration vẫn được giữ cho Hùng.
+- [ ] TODO đã hoàn thành được xóa; điểm integration được xác nhận bằng test.
 - [ ] Mô tả rõ input, output và hành vi khi dữ liệu không hợp lệ.
 - [ ] Feature owner có thể giải thích toàn bộ code mình gửi.

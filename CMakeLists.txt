@@ -55,3 +55,7 @@ add_test(NAME scoring_test COMMAND scoring_test)
 add_executable(game_state_test tests/game_state_test.cpp)
 target_link_libraries(game_state_test PRIVATE tetris_core)
 add_test(NAME game_state_test COMMAND game_state_test)
+
+add_executable(integration_test tests/integration_test.cpp)
+target_link_libraries(integration_test PRIVATE tetris_core)
+add_test(NAME integration_test COMMAND integration_test)
