@@ -13,8 +13,7 @@ add_library(tetris_core
     src/core/Input.cpp
 )
 
-# Feature implementations are discovered automatically so each member can work
-# mainly inside their own feature folder without editing this shared file.
+# Compile every gameplay module into the core game library.
 file(GLOB_RECURSE TETRIS_FEATURE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/features/*.cpp"
 )
