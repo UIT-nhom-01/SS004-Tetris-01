@@ -22,6 +22,30 @@ void expect(bool condition, const std::string& message) {
     }
 }
 
+int minBlockX(const tetris::ActivePiece& piece) {
+    return std::min_element(
+               piece.blocks.begin(),
+               piece.blocks.end(),
+               [](const auto& lhs, const auto& rhs) { return lhs.x < rhs.x; })
+        ->x;
+}
+
+int maxBlockX(const tetris::ActivePiece& piece) {
+    return std::max_element(
+               piece.blocks.begin(),
+               piece.blocks.end(),
+               [](const auto& lhs, const auto& rhs) { return lhs.x < rhs.x; })
+        ->x;
+}
+
+int maxBlockY(const tetris::ActivePiece& piece) {
+    return std::max_element(
+               piece.blocks.begin(),
+               piece.blocks.end(),
+               [](const auto& lhs, const auto& rhs) { return lhs.y < rhs.y; })
+        ->y;
+}
+
 void testBoardDimensions() {
     const tetris::GameBoard board;
     expect(board.width() == 10, "board width must be 10");
@@ -128,29 +152,41 @@ void testSharedPieceModel() {
         "translation must preserve rotation state");
 }
 
-void testTemporaryPieceMovement() {
+void testGeneratedPieceMovement() {
     tetris::Game game;
     expect(game.activePiece().blocks.size() == 4, "a piece must contain four blocks");
 
-    expect(game.moveCurrentPiece(-4, 0), "piece must move to the left edge");
-    expect(game.activePiece().blocks[0].x == 0, "piece must reach x=0");
+    const int distanceToLeftEdge = -minBlockX(game.activePiece());
+    expect(game.moveCurrentPiece(distanceToLeftEdge, 0),
+           "piece must move to the left edge");
+    expect(minBlockX(game.activePiece()) == 0, "piece must reach x=0");
     expect(!game.moveCurrentPiece(-1, 0), "piece must not cross the left edge");
-    expect(game.activePiece().blocks[0].x == 0, "rejected move must be atomic");
+    expect(minBlockX(game.activePiece()) == 0, "rejected move must be atomic");
 
-    expect(game.moveCurrentPiece(8, 0), "piece must move to the right edge");
-    expect(game.activePiece().blocks[1].x == 9, "piece must reach x=9");
+    const int distanceToRightEdge =
+        tetris::GameBoard::WIDTH - 1 - maxBlockX(game.activePiece());
+    expect(game.moveCurrentPiece(distanceToRightEdge, 0),
+           "piece must move to the right edge");
+    expect(maxBlockX(game.activePiece()) == 9, "piece must reach x=9");
     expect(!game.moveCurrentPiece(1, 0), "piece must not cross the right edge");
-    expect(game.activePiece().blocks[1].x == 9, "rejected move must be atomic");
+    expect(maxBlockX(game.activePiece()) == 9, "rejected move must be atomic");
 
-    expect(game.moveCurrentPiece(0, 18), "piece must move to the bottom edge");
-    expect(game.activePiece().blocks[3].y == 19, "piece must reach y=19");
+    const int distanceToFloor =
+        tetris::GameBoard::HEIGHT - 1 - maxBlockY(game.activePiece());
+    expect(game.moveCurrentPiece(0, distanceToFloor),
+           "piece must move to the bottom edge");
+    expect(maxBlockY(game.activePiece()) == 19, "piece must reach y=19");
     expect(!game.moveCurrentPiece(0, 1), "piece must not cross the bottom edge");
-    expect(game.activePiece().blocks[3].y == 19, "rejected move must be atomic");
+    expect(maxBlockY(game.activePiece()) == 19, "rejected move must be atomic");
 }
 
 void testTickAndRestart() {
     tetris::Game game;
+    tetris::Collision collision;
     const tetris::Position initialOrigin = game.activePiece().origin;
+
+    expect(collision.canPlace(game.board(), game.activePiece()),
+           "generated active piece must have a valid spawn position");
 
     expect(game.tick(), "gravity tick must move a placeable piece down");
     expect(
@@ -158,17 +194,16 @@ void testTickAndRestart() {
             tetris::Position{initialOrigin.x, initialOrigin.y + 1},
         "gravity tick must update piece origin");
 
-    expect(game.moveCurrentPiece(-2, 3), "test setup move must succeed");
+    expect(game.moveCurrentPiece(0, 2), "test setup move must succeed");
     game.restart();
-    expect(
-        game.activePiece().origin == initialOrigin,
-        "restart must restore the spawn origin");
-    expect(
-        game.activePiece().type == tetris::TetrominoType::O,
-        "baseline restart must restore the temporary piece");
-    expect(
-        game.nextPiece().type == tetris::TetrominoType::T,
-        "baseline restart must restore the temporary preview piece");
+    expect(!game.isGameOver(), "restart must return the game to a running state");
+    expect(game.score() == 0, "restart must reset score");
+    expect(game.activePiece().rotation == tetris::RotationState::Spawn,
+           "restart must generate an active piece in spawn orientation");
+    expect(game.nextPiece().rotation == tetris::RotationState::Spawn,
+           "restart must generate a preview piece in spawn orientation");
+    expect(collision.canPlace(game.board(), game.activePiece()),
+           "restarted active piece must be placeable on the reset board");
 }
 
 void testConsoleRendererLayoutAndColors() {
@@ -259,7 +294,7 @@ int main() {
         testBoardBoundaries();
         testInputMapping();
         testSharedPieceModel();
-        testTemporaryPieceMovement();
+        testGeneratedPieceMovement();
         testTickAndRestart();
         testConsoleRendererLayoutAndColors();
         testFeatureHeadersCompileAsContracts();

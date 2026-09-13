@@ -18,7 +18,4 @@ public:
     [[nodiscard]] ActivePiece getRotated(const ActivePiece& piece) const;
 };
 
-// TODO(Huy): implement Tetromino generation and rotation in
-// src/features/tetromino/.
-
 }  // namespace tetris
