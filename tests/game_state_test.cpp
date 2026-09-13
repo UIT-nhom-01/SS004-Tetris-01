@@ -36,6 +36,17 @@ bool piecesEqual(
         lhs.origin == rhs.origin && lhs.blocks == rhs.blocks;
 }
 
+tetris::ActivePiece findLandingPiece(
+    const tetris::GameBoard& board,
+    const tetris::ActivePiece& spawnPiece,
+    const tetris::Collision& collision) {
+    tetris::ActivePiece landingPiece = spawnPiece;
+    while (collision.canPlace(board, tetris::translated(landingPiece, 0, 1))) {
+        landingPiece = tetris::translated(landingPiece, 0, 1);
+    }
+    return landingPiece;
+}
+
 // Drops every piece straight down from its spawn position. Spawned pieces never
 // reach column 0, so no row can clear and the stack must eventually block the
 // spawn area.
@@ -150,18 +161,31 @@ void testRestartResetsBoardScoreAndState() {
     tetris::Game game;
     tetris::Collision collision;
 
-    // Seed the bottom row so the initial O piece completes one line. Game only
-    // exposes a read-only board because production mutation belongs to
-    // Collision; this controlled test setup removes constness from a non-const
-    // Game instance without changing the production API.
+    // Seed every bottom-row cell that the generated piece will not occupy at
+    // its landing position. Game exposes a read-only board because production
+    // mutation belongs to Collision; this controlled setup removes constness
+    // from a non-const Game instance without changing the production API.
     auto& board = const_cast<tetris::GameBoard&>(game.board());
-    for (int x = 0; x < 8; ++x) {
-        board.setCell(x, 19, tetris::CellState::J);
+    const tetris::ActivePiece landingPiece =
+        findLandingPiece(board, game.activePiece(), collision);
+    bool landingColumns[tetris::GameBoard::WIDTH]{};
+    for (const tetris::Position& block : landingPiece.blocks) {
+        if (block.y == tetris::GameBoard::HEIGHT - 1) {
+            landingColumns[block.x] = true;
+        }
     }
-    expect(game.moveCurrentPiece(4, 18),
-           "score reset setup must move the O piece into the final gap");
+    for (int x = 0; x < board.width(); ++x) {
+        if (!landingColumns[x]) {
+            board.setCell(x, board.height() - 1, tetris::CellState::J);
+        }
+    }
+
+    const int landingDistance =
+        landingPiece.origin.y - game.activePiece().origin.y;
+    expect(game.moveCurrentPiece(0, landingDistance),
+           "score reset setup must move the generated piece into the final gaps");
     expect(game.tick(),
-           "locking the O piece must complete and clear the bottom row");
+           "locking the generated piece must complete and clear the bottom row");
     expect(game.score() == 100,
            "score reset setup must create a non-zero score");
 
@@ -179,13 +203,12 @@ void testRestartResetsBoardScoreAndState() {
                    "restart must empty every board cell");
         }
     }
-    expect(game.activePiece().type == tetris::TetrominoType::O &&
-               game.activePiece().origin == tetris::Position{4, 0},
-           "restart must spawn a fresh active piece");
+    expect(game.activePiece().rotation == tetris::RotationState::Spawn,
+           "restart must generate the active piece in spawn orientation");
     expect(collision.canPlace(game.board(), game.activePiece()),
            "restarted active piece must be placeable");
-    expect(game.nextPiece().type == tetris::TetrominoType::T,
-           "restart must refill the next piece");
+    expect(game.nextPiece().rotation == tetris::RotationState::Spawn,
+           "restart must refill the next piece in spawn orientation");
 }
 
 // A restarted session accepts gameplay and can reach Game Over again.

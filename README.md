@@ -36,7 +36,7 @@ phải. Mỗi loại Tetromino có một màu riêng và giữ nguyên màu sau 
 | Môn học | Kỹ năng nghề nghiệp - SS004 |
 | Ngôn ngữ | C++17 |
 | Build system | CMake 3.16 trở lên |
-| Repository | [UIT-nhom-0x/SS004-Tetris-01](https://github.com/UIT-nhom-0x/SS004-Tetris-01) |
+| Repository | [UIT-nhom-0x/SS004-Tetris-0x](https://github.com/UIT-nhom-0x/SS004-Tetris-0x) |
 
 ## 2. Mục tiêu dự án
 
@@ -453,6 +453,11 @@ xóa cache build cũ rồi cấu hình lại.
 ctest --test-dir build --output-on-failure
 ```
 
+CTest chạy sáu target: core, Tetromino/rotation, collision/line clearing,
+scoring, Game Over/restart và integration. Riêng `integration_test` kiểm tra
+chuỗi module ở cấp `Game`: sinh khối, di chuyển/xoay, rơi và khóa, xóa hàng,
+cộng điểm, chuyển Next Piece, Game Over và Restart.
+
 ## 12. Quy trình làm việc nhóm
 
 ### Trạng thái task
@@ -474,6 +479,7 @@ flowchart LR
 | `feature/collision-line-clear` | Collision, locking và line clearing |
 | `feature/scoring` | Scoring và scoring tests |
 | `feature/game-over-restart` | Game Over, Restart và state reset |
+| `feature/integration` | Kết nối các module, regression test và hoàn thiện gameplay flow |
 
 ### Quy trình Git và review
 
@@ -501,7 +507,7 @@ flowchart LR
 
 | Công cụ | Mục đích | Liên kết |
 | --- | --- | --- |
-| GitHub / Git | Source code, branch, commit, review và merge | [Repository](https://github.com/UIT-nhom-0x/SS004-Tetris-01) |
+| GitHub / Git | Source code, branch, commit, review và merge | [Repository](https://github.com/UIT-nhom-0x/SS004-Tetris-0x) |
 | Trello | Phân công task, deadline và theo dõi tiến độ | [SS004 Tetris 01](https://trello.com/b/ekmtesTV/ss004-tetris-01) |
 | Slack | Trao đổi công việc và vấn đề kỹ thuật | [Kênh của nhóm](https://ss004f31.slack.com/archives/C0BV25QV3L5) |
 | Overleaf / LaTeX | Soạn thảo và quản lý báo cáo | [Báo cáo nhóm](https://www.overleaf.com/read/xkrvvtjdcpzm#2eb4c6) |
