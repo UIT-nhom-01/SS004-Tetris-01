@@ -1,7 +1,7 @@
 # SS004 - Tetris Game
 
-Tài liệu tổng quan và hướng dẫn phát triển đồ án Tetris của Nhóm 01 trong môn
-Kỹ năng nghề nghiệp - SS004, Trường Đại học Công nghệ Thông tin - ĐHQG TP.HCM.
+Sản phẩm Tetris chạy trên terminal của Nhóm 01 trong môn Kỹ năng nghề nghiệp -
+SS004, Trường Đại học Công nghệ Thông tin - ĐHQG TP.HCM.
 
 ## Giao diện
 
@@ -45,17 +45,6 @@ phải. Mỗi loại Tetromino có một màu riêng và giữ nguyên màu sau 
 Xây dựng một phiên bản Tetris cơ bản, hoàn chỉnh và dễ sử dụng, có đầy đủ vòng
 đời gameplay từ lúc bắt đầu cho đến Game Over và Restart.
 
-### Mục tiêu học tập
-
-| Mục tiêu | Nội dung |
-| --- | --- |
-| Làm việc nhóm | Phân chia module, phối hợp feature và review chéo |
-| Quản lý công việc | Theo dõi owner, tiến độ và trạng thái task |
-| Phát triển phần mềm | Thiết kế, cài đặt và kiểm thử bằng C++ |
-| Quản lý source code | Làm việc với branch, commit, pull request và merge |
-| Kiểm thử | Viết test, báo lỗi và thực hiện regression testing |
-| Tài liệu kỹ thuật | Duy trì kiến trúc, contract và hướng dẫn trong README |
-
 ### Mục tiêu của người chơi
 
 Người chơi điều khiển các Tetromino đang rơi để tạo thành hàng ngang hoàn chỉnh.
@@ -65,8 +54,7 @@ sinh khối ở phía trên bàn chơi.
 
 ## 3. Phạm vi chức năng
 
-Phần này mô tả phạm vi của sản phẩm hoàn chỉnh sau khi các feature do từng
-thành viên phụ trách được tích hợp.
+Sản phẩm hoàn chỉnh hỗ trợ các chức năng sau:
 
 | Nhóm chức năng | Yêu cầu |
 | --- | --- |
@@ -264,7 +252,7 @@ flowchart TD
     OverAction -->|Q| End
 ```
 
-### Thứ tự tích hợp một piece
+### Vòng đời một Tetromino
 
 ```mermaid
 sequenceDiagram
@@ -355,24 +343,13 @@ mọi thay đổi mang tính atomic và tránh phải rollback state.
 | `Scoring` | `reset`, `addLines`, `getScore` | Sở hữu score; nhận số hàng đã được Collision xóa |
 | `GameState` | `isGameOver`, `updateAfterSpawn`, `reset` | Sở hữu trạng thái Game Over dựa trên kết quả spawn |
 
-### Quy tắc dành cho feature implementation
-
-| Quy tắc | Yêu cầu |
-| --- | --- |
-| Candidate first | Không mutate ActivePiece trước khi Collision xác nhận |
-| Single owner | Mỗi state chỉ có một module sở hữu |
-| No hidden I/O | Feature không đọc bàn phím hoặc in ra terminal |
-| Explicit result | Line clearing trả về `lineCount`; spawn check trả về boolean |
-| Public contract | Đổi shared type hoặc feature header phải được Team Lead review |
-| Testability | Mọi thuật toán có deterministic entry point để viết test |
-
 ## 9. Cấu trúc repository
 
 ```mermaid
 flowchart LR
     Repo["SS004-Tetris-01"] --> Build["CMakeLists.txt"]
     Repo --> Readme["README.md<br/>project documentation"]
-    Repo --> Docs["docs/feature-guides/<br/>implementation guide"]
+    Repo --> Docs["docs/<br/>build guide và QA report"]
     Repo --> Include["include/"]
     Repo --> Source["src/"]
     Repo --> Tests["tests/"]
@@ -393,12 +370,9 @@ flowchart LR
     Tests --> FeatureTests["feature và regression tests"]
 ```
 
-CMake tự phát hiện file `.cpp` trong `src/features/`. Thành viên thêm source vào
-đúng thư mục của mình mà không cần sửa đồng thời `CMakeLists.txt`, nhờ đó giảm
-conflict giữa các feature branch.
-
-Hướng dẫn chi tiết cho từng feature owner nằm tại
-[`docs/feature-guides/README.md`](docs/feature-guides/README.md).
+Hướng dẫn build chi tiết nằm tại
+[`docs/BUILD_AND_RUN.md`](docs/BUILD_AND_RUN.md). Kết quả kiểm thử bản tích hợp
+nằm tại [`docs/QA_GAMEPLAY_REPORT.md`](docs/QA_GAMEPLAY_REPORT.md).
 
 ## 10. Thành viên và phân công
 
@@ -409,16 +383,6 @@ Hướng dẫn chi tiết cho từng feature owner nằm tại
 | 26730078 | Nguyễn Quý Tứ | Developer | Collision, piece locking, line detection và line clearing | `include/features/Collision.hpp`, `src/features/collision/` |
 | 26730014 | Nguyễn Thị Hồng Gấm | Developer / Tester | Scoring, gameplay testing, bug report và regression testing | `include/features/Scoring.hpp`, `src/features/scoring/`, `tests/` |
 | 26730032 | Nguyễn Gia Khánh | Developer | Game Over, Restart và reset game state | `include/features/GameState.hpp`, `src/features/game_state/` |
-
-### Trách nhiệm integration
-
-| Công việc | Feature owner | Team Lead |
-| --- | --- | --- |
-| Thiết kế thuật toán trong phạm vi được giao | Thực hiện | Review |
-| Cài đặt source và unit test | Thực hiện | Hỗ trợ contract |
-| Thay đổi public API | Đề xuất | Phê duyệt và kiểm tra ảnh hưởng |
-| Kết nối feature vào `Game` | Hỗ trợ | Thực hiện |
-| Regression test toàn hệ thống | Phối hợp | Xác nhận trước khi merge |
 
 ## 11. Build, chạy và kiểm thử
 

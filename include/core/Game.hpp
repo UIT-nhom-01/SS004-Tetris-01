@@ -36,7 +36,7 @@ public:
     /// without restarting the process.
     void restart();
 
-    /// Exposes read-only state for feature integration and tests.
+    /// Exposes the current session state without allowing external mutation.
     [[nodiscard]] const GameBoard& board() const;
     [[nodiscard]] const ActivePiece& activePiece() const;
     [[nodiscard]] const ActivePiece& nextPiece() const;
