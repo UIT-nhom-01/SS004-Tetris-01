@@ -471,7 +471,7 @@ flowchart LR
 
 | Công cụ | Mục đích | Liên kết |
 | --- | --- | --- |
-| GitHub / Git | Source code, branch, commit, review và merge | [Repository](https://github.com/UIT-nhom-0x/SS004-Tetris-0x) |
-| Trello | Phân công task, deadline và theo dõi tiến độ | [SS004 Tetris 01](https://trello.com/b/ekmtesTV/ss004-tetris-01) |
-| Slack | Trao đổi công việc và vấn đề kỹ thuật | [Kênh của nhóm](https://ss004f31.slack.com/archives/C0BV25QV3L5) |
-| Overleaf / LaTeX | Soạn thảo và quản lý báo cáo | [Báo cáo nhóm](https://www.overleaf.com/read/xkrvvtjdcpzm#2eb4c6) |
+| GitHub / Git | Source code, branch, commit, review và merge | [Link Repository](https://github.com/UIT-nhom-01/SS004-Tetris-01) |
+| Trello | Phân công task, deadline và theo dõi tiến độ | [Link Trello](https://trello.com/b/ekmtesTV/ss004-tetris-01) |
+| Slack | Trao đổi công việc và vấn đề kỹ thuật | [Link Slack](https://ss004f31.slack.com/archives/C0BV25QV3L5) |
+| Overleaf / LaTeX | Soạn thảo và quản lý báo cáo | [Link Overleaf](https://www.overleaf.com/read/xkrvvtjdcpzm#2eb4c6) |
