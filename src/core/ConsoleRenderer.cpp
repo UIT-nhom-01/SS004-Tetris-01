@@ -11,7 +11,7 @@ namespace tetris {
 namespace {
 
 constexpr int CELL_DISPLAY_WIDTH = 2;
-constexpr int PANEL_INNER_WIDTH = 32;
+constexpr int PANEL_INNER_WIDTH = 67;
 constexpr int PREVIEW_GRID_SIZE = 4;
 constexpr std::string_view ANSI_RESET = "\x1B[0m";
 
@@ -93,6 +93,7 @@ constexpr std::string_view ANSI_RESET = "\x1B[0m";
 [[nodiscard]] std::array<std::string, GameBoard::HEIGHT + 2> buildBoardLines(
     const GameBoard& board,
     const ActivePiece& activePiece,
+    bool showActivePiece,
     bool useColor) {
     std::array<std::string, GameBoard::HEIGHT + 2> lines;
     const std::string border =
@@ -107,7 +108,7 @@ constexpr std::string_view ANSI_RESET = "\x1B[0m";
                 activePiece.blocks.end(),
                 Position{x, y});
 
-            if (activeBlock != activePiece.blocks.end()) {
+            if (showActivePiece && activeBlock != activePiece.blocks.end()) {
                 line += renderBlock(colorFor(activePiece.type), useColor);
                 continue;
             }
@@ -178,10 +179,10 @@ constexpr std::string_view ANSI_RESET = "\x1B[0m";
     lines[0] = panelBorder();
     lines[1] = centeredPanelLine("SS004 TETRIS");
     lines[2] = panelBorder();
-    lines[3] = panelLine(" SCORE");
-    lines[4] = panelLine(" " + std::to_string(score));
+    lines[3] = panelLine("  SCORE");
+    lines[4] = panelLine("  " + std::to_string(score));
     lines[5] = panelBorder();
-    lines[6] = panelLine(" NEXT PIECE");
+    lines[6] = panelLine("  NEXT PIECE");
     lines[7] = panelLine();
     lines[8] = previewLines[0];
     lines[9] = previewLines[1];
@@ -189,12 +190,12 @@ constexpr std::string_view ANSI_RESET = "\x1B[0m";
     lines[11] = previewLines[3];
     lines[12] = gameOver ? centeredPanelLine("GAME OVER") : panelLine();
     lines[13] = panelBorder();
-    lines[14] = panelLine(" CONTROLS");
-    lines[15] = panelLine(" Left/Right : arrows or A/D");
-    lines[16] = panelLine(" Soft drop  : down arrow or S");
-    lines[17] = panelLine(" Rotate     : up arrow or W");
-    lines[18] = panelLine(" Restart    : R");
-    lines[19] = panelLine(" Quit       : Q");
+    lines[14] = panelLine("  CONTROLS");
+    lines[15] = panelLine();
+    lines[16] = panelLine("  Left/Right : arrows or A/D");
+    lines[17] = panelLine("  Soft drop  : down arrow or S");
+    lines[18] = panelLine("  Rotate     : up arrow or W");
+    lines[19] = panelLine("  Restart: R     Quit: Q");
     lines[20] = panelLine();
     lines[21] = panelBorder();
     return lines;
@@ -209,7 +210,8 @@ std::string ConsoleRenderer::buildFrame(
     int score,
     bool gameOver,
     bool useColor) const {
-    const auto boardLines = buildBoardLines(board, activePiece, useColor);
+    const auto boardLines =
+        buildBoardLines(board, activePiece, !gameOver, useColor);
     const auto panelLines =
         buildPanelLines(nextPiece, score, gameOver, useColor);
 
