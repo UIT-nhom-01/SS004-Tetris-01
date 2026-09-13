@@ -9,7 +9,7 @@ public:
     void reset();
 
     /// Adds points for clearing `lineCount` rows in one lock operation.
-    /// TODO(Gam): define and validate the scoring table for 1-4 rows.
+    /// Throws std::invalid_argument when `lineCount` is outside 0-4.
     void addLines(int lineCount);
 
     /// Returns the current score without changing it.
@@ -18,7 +18,5 @@ public:
 private:
     int score_{0};
 };
-
-// TODO(Gam): implement the scoring system in src/features/scoring/.
 
 }  // namespace tetris
