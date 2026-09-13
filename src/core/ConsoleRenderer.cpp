@@ -93,6 +93,7 @@ constexpr std::string_view ANSI_RESET = "\x1B[0m";
 [[nodiscard]] std::array<std::string, GameBoard::HEIGHT + 2> buildBoardLines(
     const GameBoard& board,
     const ActivePiece& activePiece,
+    bool showActivePiece,
     bool useColor) {
     std::array<std::string, GameBoard::HEIGHT + 2> lines;
     const std::string border =
@@ -107,7 +108,7 @@ constexpr std::string_view ANSI_RESET = "\x1B[0m";
                 activePiece.blocks.end(),
                 Position{x, y});
 
-            if (activeBlock != activePiece.blocks.end()) {
+            if (showActivePiece && activeBlock != activePiece.blocks.end()) {
                 line += renderBlock(colorFor(activePiece.type), useColor);
                 continue;
             }
@@ -209,7 +210,8 @@ std::string ConsoleRenderer::buildFrame(
     int score,
     bool gameOver,
     bool useColor) const {
-    const auto boardLines = buildBoardLines(board, activePiece, useColor);
+    const auto boardLines =
+        buildBoardLines(board, activePiece, !gameOver, useColor);
     const auto panelLines =
         buildPanelLines(nextPiece, score, gameOver, useColor);
 
