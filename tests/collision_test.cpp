@@ -157,6 +157,25 @@ void testClearWithoutFullLinesKeepsBoard() {
            "isolated block must stay untouched");
 }
 
+void testNoLineClearPreservesEveryCell() {
+    tetris::Collision collision;
+    tetris::GameBoard board;
+    for (int y = 0; y < board.height(); ++y) {
+        board.setCell(y % board.width(), y, tetris::CellState::S);
+        board.setCell((y + 3) % board.width(), y, tetris::CellState::L);
+    }
+    const tetris::GameBoard before = board;
+
+    expect(collision.clearCompletedLines(board) == 0,
+           "partial rows must not be cleared");
+    for (int y = 0; y < board.height(); ++y) {
+        for (int x = 0; x < board.width(); ++x) {
+            expect(board.getCell(x, y) == before.getCell(x, y),
+                   "a no-op line clear must preserve every typed cell");
+        }
+    }
+}
+
 void testClearSingleLineShiftsRowsDown() {
     tetris::Collision collision;
     tetris::GameBoard board;
@@ -293,6 +312,7 @@ int main() {
         testLockPieceStoresTypeAndColor();
         testLockedPieceCompletesAndClearsLine();
         testClearWithoutFullLinesKeepsBoard();
+        testNoLineClearPreservesEveryCell();
         testClearSingleLineShiftsRowsDown();
         testClearMultipleConsecutiveLines();
         testClearTopLineEmptiesReplacementCells();
