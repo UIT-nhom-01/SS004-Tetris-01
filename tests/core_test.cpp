@@ -91,6 +91,32 @@ void testCellStateContract() {
         "every Tetromino type must have a storable board state");
 }
 
+void testEveryTetrominoTypeRetainsItsBoardIdentity() {
+    const std::pair<tetris::TetrominoType, tetris::CellState> typedCells[] = {
+        {tetris::TetrominoType::I, tetris::CellState::I},
+        {tetris::TetrominoType::O, tetris::CellState::O},
+        {tetris::TetrominoType::T, tetris::CellState::T},
+        {tetris::TetrominoType::S, tetris::CellState::S},
+        {tetris::TetrominoType::Z, tetris::CellState::Z},
+        {tetris::TetrominoType::J, tetris::CellState::J},
+        {tetris::TetrominoType::L, tetris::CellState::L}};
+    tetris::GameBoard board;
+
+    for (int index = 0; index < 7; ++index) {
+        const auto [type, state] = typedCells[index];
+        expect(tetris::cellStateFor(type) == state,
+               "each Tetromino must map to its own board state");
+        expect(tetris::isOccupied(state),
+               "every typed board state must be occupied");
+        board.setCell(index, 19, state);
+    }
+
+    for (int index = 0; index < 7; ++index) {
+        expect(board.getCell(index, 19) == typedCells[index].second,
+               "board cells must retain each Tetromino identity");
+    }
+}
+
 void testBoardBoundaries() {
     const tetris::GameBoard board;
     expect(board.isInside(0, 0), "top-left position must be inside");
@@ -344,6 +370,7 @@ int main() {
         testBoardDimensions();
         testBoardCellsAndReset();
         testCellStateContract();
+        testEveryTetrominoTypeRetainsItsBoardIdentity();
         testBoardBoundaries();
         testInvalidBoardWritesLeaveCellsUntouched();
         testInputMapping();
