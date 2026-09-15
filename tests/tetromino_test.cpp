@@ -83,6 +83,35 @@ void testRotateFourTimesReturnsOriginalBlocks() {
     expect(p.rotation == original.rotation, "4 rotates must restore rotation");
 }
 
+void testEveryShapeCompletesAFullRotationCycle() {
+    tetris::Tetromino factory;
+    const tetris::RotationState expectedStates[] = {
+        tetris::RotationState::Right,
+        tetris::RotationState::Reverse,
+        tetris::RotationState::Left,
+        tetris::RotationState::Spawn};
+
+    for (const auto type : {
+             tetris::TetrominoType::I, tetris::TetrominoType::O,
+             tetris::TetrominoType::T, tetris::TetrominoType::S,
+             tetris::TetrominoType::Z, tetris::TetrominoType::J,
+             tetris::TetrominoType::L}) {
+        const auto original = factory.createPiece(type);
+        auto current = original;
+        for (int turn = 0; turn < 4; ++turn) {
+            current = factory.getRotated(current);
+            expect(current.rotation == expectedStates[turn],
+                   "rotation orientation must advance clockwise");
+            expect(current.origin == original.origin,
+                   "rotation must keep the pivot fixed");
+            expect(hasFourDistinctBlocks(current),
+                   "rotation must keep four distinct blocks");
+        }
+        expect(current.blocks == original.blocks,
+               "four turns must restore every shape's spawn blocks");
+    }
+}
+
 void testRotateOUnchangedShape() {
     tetris::Tetromino factory;
     const auto original = factory.createPiece(tetris::TetrominoType::O);
@@ -107,6 +136,7 @@ int main() {
         testAllSpawnPiecesFitTheTopOfTheBoard();
         testRandomTypesAreValid();
         testRotateFourTimesReturnsOriginalBlocks();
+        testEveryShapeCompletesAFullRotationCycle();
         testRotateOUnchangedShape();
         testGetRotatedDoesNotMutateInput();
         std::cout << "tetromino_test: all passed\n";
