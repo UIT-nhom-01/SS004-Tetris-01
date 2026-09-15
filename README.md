@@ -374,6 +374,14 @@ Hướng dẫn build chi tiết nằm tại
 [`docs/BUILD_AND_RUN.md`](docs/BUILD_AND_RUN.md). Kết quả kiểm thử bản tích hợp
 nằm tại [`docs/QA_GAMEPLAY_REPORT.md`](docs/QA_GAMEPLAY_REPORT.md).
 
+Tài liệu dành cho người phát triển:
+
+- [Contract kiến trúc](docs/ARCHITECTURE_CONTRACTS.md)
+- [Input và terminal](docs/INPUT_AND_TERMINAL.md)
+- [Tetromino và rotation](docs/TETROMINO_AND_ROTATION.md)
+- [Board, collision và scoring](docs/BOARD_COLLISION_AND_SCORING.md)
+- [Checklist regression](docs/REGRESSION_CHECKLIST.md)
+
 ## 10. Thành viên và phân công
 
 | MSSV | Thành viên | Vai trò | Phạm vi phụ trách | Thư mục chính |

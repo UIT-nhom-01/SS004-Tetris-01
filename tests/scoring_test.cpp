@@ -119,6 +119,25 @@ void testInvalidLineCount() {
     }
 }
 
+void testInvalidLineCountPreservesAccumulatedScore() {
+    tetris::Scoring scoring;
+    scoring.addLines(1);
+    scoring.addLines(2);
+    const int scoreBefore = scoring.getScore();
+
+    for (const int invalidCount : {-1, 5}) {
+        bool threw = false;
+        try {
+            scoring.addLines(invalidCount);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        expect(threw, "invalid line count must be rejected");
+        expect(scoring.getScore() == scoreBefore,
+               "rejected scoring input must preserve earned points");
+    }
+}
+
 }  // namespace
 
 int main() {
@@ -129,6 +148,7 @@ int main() {
         testReset();
         testZeroLines();
         testInvalidLineCount();
+        testInvalidLineCountPreservesAccumulatedScore();
 
         std::cout << "scoring_test: all passed\n";
         return 0;
