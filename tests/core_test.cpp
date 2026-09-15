@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -377,6 +378,26 @@ void testConsoleRendererLayoutAndColors() {
         "the side panel must support the future Game Over state");
 }
 
+void testEveryPlainRendererRowHasTheSameWidth() {
+    const tetris::GameBoard board;
+    const tetris::Tetromino factory;
+    const auto active = factory.createPiece(tetris::TetrominoType::O);
+    const auto next = factory.createPiece(tetris::TetrominoType::I);
+    const tetris::ConsoleRenderer renderer;
+    std::istringstream lines(renderer.buildFrame(
+        board, active, next, 0, false, false));
+
+    std::string line;
+    int rowCount = 0;
+    while (std::getline(lines, line)) {
+        expect(line.size() == 94,
+               "every plain board and sidebar row must be 94 columns wide");
+        ++rowCount;
+    }
+    expect(rowCount == 22,
+           "plain rendering must include 20 play rows and two borders");
+}
+
 void testConsoleRendererHidesBlockedSpawnAfterGameOver() {
     tetris::GameBoard board;
     board.setCell(4, 0, tetris::CellState::Z);
@@ -428,6 +449,7 @@ int main() {
         testGeneratedPieceMovement();
         testTickAndRestart();
         testConsoleRendererLayoutAndColors();
+        testEveryPlainRendererRowHasTheSameWidth();
         testConsoleRendererHidesBlockedSpawnAfterGameOver();
         testFeatureHeadersCompileAsContracts();
     } catch (const std::exception& error) {
