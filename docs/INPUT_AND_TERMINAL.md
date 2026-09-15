@@ -1,7 +1,7 @@
 # Input và hiển thị terminal
 
 Game nhận action logic từ `Input`, sau đó `Game` quyết định di chuyển, xoay,
-restart hoặc quit. Bảng phím người chơi nằm trong [README](../README.md#hướng-dẫn-chơi).
+restart hoặc quit. Bảng phím người chơi nằm trong [README](../README.md#5-hướng-dẫn-chơi).
 
 ## Ánh xạ phím
 
