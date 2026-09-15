@@ -329,6 +329,48 @@ void testGameRotationAppliesTetrominoCandidate() {
            "rotation input must use Tetromino block coordinates");
 }
 
+void testGameRejectsRotationIntoALockedCellAtomically() {
+    tetris::Game game;
+    for (int attempt = 0;
+         attempt < 100 && game.activePiece().type == tetris::TetrominoType::O;
+         ++attempt) {
+        game.restart();
+    }
+    expect(game.activePiece().type != tetris::TetrominoType::O,
+           "test setup must obtain a shape with changing rotation blocks");
+
+    const tetris::Tetromino factory;
+    const tetris::ActivePiece original = game.activePiece();
+    const tetris::ActivePiece candidate = factory.getRotated(original);
+    auto& board = const_cast<tetris::GameBoard&>(game.board());
+    bool foundCandidateOnlyCell = false;
+    for (const tetris::Position& block : candidate.blocks) {
+        if (std::find(original.blocks.begin(), original.blocks.end(), block) ==
+            original.blocks.end()) {
+            board.setCell(block.x, block.y, tetris::CellState::Z);
+            foundCandidateOnlyCell = true;
+            break;
+        }
+    }
+    expect(foundCandidateOnlyCell,
+           "test setup must block a new cell used by the rotated candidate");
+    const tetris::GameBoard beforeBoard = board;
+
+    expect(!game.rotateCurrentPiece(),
+           "rotation into a locked cell must be rejected");
+    expect(game.activePiece().type == original.type &&
+               game.activePiece().rotation == original.rotation &&
+               game.activePiece().origin == original.origin &&
+               game.activePiece().blocks == original.blocks,
+           "rejected rotation must preserve the complete active piece");
+    for (int y = 0; y < board.height(); ++y) {
+        for (int x = 0; x < board.width(); ++x) {
+            expect(board.getCell(x, y) == beforeBoard.getCell(x, y),
+                   "rejected rotation must not alter locked cells");
+        }
+    }
+}
+
 }  // namespace
 
 int main() {
@@ -347,6 +389,7 @@ int main() {
         testGameTickLocksPieceAndPromotesNextPiece();
         testGameMovementRejectsBlockedCandidates();
         testGameRotationAppliesTetrominoCandidate();
+        testGameRejectsRotationIntoALockedCellAtomically();
         std::cout << "collision_test: all passed\n";
         return 0;
     } catch (const std::exception& ex) {
