@@ -425,6 +425,29 @@ void testConsoleRendererHidesBlockedSpawnAfterGameOver() {
         "Game Over must not draw the blocked active piece over the board");
 }
 
+void testGameOverFrameIgnoresTheUnspawnedActivePiece() {
+    tetris::GameBoard board;
+    board.setCell(4, 0, tetris::CellState::Z);
+    const tetris::Tetromino factory;
+    const auto blocked = factory.createPiece(tetris::TetrominoType::O);
+    const auto next = factory.createPiece(tetris::TetrominoType::T);
+    const tetris::ConsoleRenderer renderer;
+
+    const std::string blockedFrame = renderer.buildFrame(
+        board, blocked, next, 500, true, false);
+    const std::string movedFrame = renderer.buildFrame(
+        board, tetris::translated(blocked, 1, 3), next, 500, true, false);
+    const std::string playingFrame = renderer.buildFrame(
+        board, blocked, next, 500, false, false);
+
+    expect(blockedFrame == movedFrame,
+           "Game Over frame must depend only on locked board cells");
+    expect(blockedFrame != playingFrame,
+           "the playing frame must still draw the active piece");
+    expect(blockedFrame.find("GAME OVER") != std::string::npos,
+           "Game Over frame must explain why gameplay stopped");
+}
+
 void testFeatureHeadersCompileAsContracts() {
     static_assert(std::is_default_constructible_v<tetris::Tetromino>);
     static_assert(std::is_default_constructible_v<tetris::Collision>);
@@ -451,6 +474,7 @@ int main() {
         testConsoleRendererLayoutAndColors();
         testEveryPlainRendererRowHasTheSameWidth();
         testConsoleRendererHidesBlockedSpawnAfterGameOver();
+        testGameOverFrameIgnoresTheUnspawnedActivePiece();
         testFeatureHeadersCompileAsContracts();
     } catch (const std::exception& error) {
         std::cerr << "Core test failed: " << error.what() << '\n';
