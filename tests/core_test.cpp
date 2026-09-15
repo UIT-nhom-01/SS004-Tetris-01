@@ -225,6 +225,30 @@ void testSharedPieceModel() {
         "translation must preserve rotation state");
 }
 
+void testTranslationMovesAllBlocksWithoutChangingTheSource() {
+    const tetris::ActivePiece source{
+        tetris::TetrominoType::L,
+        tetris::RotationState::Right,
+        {5, 4},
+        {{{5, 3}, {5, 4}, {5, 5}, {6, 5}}}};
+    const auto moved = tetris::translated(source, -3, 7);
+
+    expect(moved.origin == tetris::Position{2, 11},
+           "translation must move the rotation origin");
+    for (std::size_t index = 0; index < source.blocks.size(); ++index) {
+        expect(moved.blocks[index] == tetris::Position{
+                   source.blocks[index].x - 3, source.blocks[index].y + 7},
+               "translation must move each block by the same offset");
+    }
+    expect(source.origin == tetris::Position{5, 4},
+           "translation must leave the source origin unchanged");
+    expect(source.blocks == std::array<tetris::Position, 4>{{
+               {5, 3}, {5, 4}, {5, 5}, {6, 5}}},
+           "translation must leave every source block unchanged");
+    expect(moved.type == source.type && moved.rotation == source.rotation,
+           "translation must preserve piece identity and orientation");
+}
+
 void testGeneratedPieceMovement() {
     tetris::Game game;
     expect(game.activePiece().blocks.size() == 4, "a piece must contain four blocks");
@@ -400,6 +424,7 @@ int main() {
         testInputMapping();
         testInputAliasesAndNonGameplayKeys();
         testSharedPieceModel();
+        testTranslationMovesAllBlocksWithoutChangingTheSource();
         testGeneratedPieceMovement();
         testTickAndRestart();
         testConsoleRendererLayoutAndColors();
