@@ -223,6 +223,33 @@ void testClearMultipleConsecutiveLines() {
     }
 }
 
+void testSeparatedCompletedLinesKeepSurvivorOrderAndTypes() {
+    tetris::Collision collision;
+    tetris::GameBoard board;
+    for (int x = 0; x < board.width(); ++x) {
+        board.setCell(x, 17, tetris::CellState::Z);
+        board.setCell(x, 19, tetris::CellState::J);
+    }
+    board.setCell(4, 15, tetris::CellState::I);
+    board.setCell(9, 16, tetris::CellState::T);
+    board.setCell(0, 18, tetris::CellState::O);
+
+    expect(collision.clearCompletedLines(board) == 2,
+           "two separated completed lines must clear in one pass");
+    expect(board.getCell(0, 19) == tetris::CellState::O,
+           "lowest surviving row must land at the bottom");
+    expect(board.getCell(9, 18) == tetris::CellState::T,
+           "middle surviving row must retain its position and type");
+    expect(board.getCell(4, 17) == tetris::CellState::I,
+           "highest surviving row must stay above the other survivors");
+    for (int y = 0; y < 17; ++y) {
+        for (int x = 0; x < board.width(); ++x) {
+            expect(board.getCell(x, y) == tetris::CellState::Empty,
+                   "rows without surviving blocks must remain empty");
+        }
+    }
+}
+
 void testClearTopLineEmptiesReplacementCells() {
     tetris::Collision collision;
     tetris::GameBoard board;
@@ -315,6 +342,7 @@ int main() {
         testNoLineClearPreservesEveryCell();
         testClearSingleLineShiftsRowsDown();
         testClearMultipleConsecutiveLines();
+        testSeparatedCompletedLinesKeepSurvivorOrderAndTypes();
         testClearTopLineEmptiesReplacementCells();
         testGameTickLocksPieceAndPromotesNextPiece();
         testGameMovementRejectsBlockedCandidates();
