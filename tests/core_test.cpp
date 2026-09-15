@@ -10,9 +10,11 @@
 
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 namespace {
 
@@ -91,6 +93,32 @@ void testCellStateContract() {
         "every Tetromino type must have a storable board state");
 }
 
+void testEveryTetrominoTypeRetainsItsBoardIdentity() {
+    const std::pair<tetris::TetrominoType, tetris::CellState> typedCells[] = {
+        {tetris::TetrominoType::I, tetris::CellState::I},
+        {tetris::TetrominoType::O, tetris::CellState::O},
+        {tetris::TetrominoType::T, tetris::CellState::T},
+        {tetris::TetrominoType::S, tetris::CellState::S},
+        {tetris::TetrominoType::Z, tetris::CellState::Z},
+        {tetris::TetrominoType::J, tetris::CellState::J},
+        {tetris::TetrominoType::L, tetris::CellState::L}};
+    tetris::GameBoard board;
+
+    for (int index = 0; index < 7; ++index) {
+        const auto [type, state] = typedCells[index];
+        expect(tetris::cellStateFor(type) == state,
+               "each Tetromino must map to its own board state");
+        expect(tetris::isOccupied(state),
+               "every typed board state must be occupied");
+        board.setCell(index, 19, state);
+    }
+
+    for (int index = 0; index < 7; ++index) {
+        expect(board.getCell(index, 19) == typedCells[index].second,
+               "board cells must retain each Tetromino identity");
+    }
+}
+
 void testBoardBoundaries() {
     const tetris::GameBoard board;
     expect(board.isInside(0, 0), "top-left position must be inside");
@@ -107,6 +135,29 @@ void testBoardBoundaries() {
         threw = true;
     }
     expect(threw, "reading outside the board must throw");
+}
+
+void testInvalidBoardWritesLeaveCellsUntouched() {
+    tetris::GameBoard board;
+    board.setCell(0, 0, tetris::CellState::I);
+    board.setCell(9, 19, tetris::CellState::L);
+
+    const tetris::Position invalidPositions[] = {
+        {-1, 0}, {10, 0}, {0, -1}, {0, 20}};
+    for (const tetris::Position position : invalidPositions) {
+        bool threw = false;
+        try {
+            board.setCell(position.x, position.y, tetris::CellState::Z);
+        } catch (const std::out_of_range&) {
+            threw = true;
+        }
+        expect(threw, "writing outside the board must throw");
+    }
+
+    expect(board.getCell(0, 0) == tetris::CellState::I,
+           "invalid writes must preserve the top-left cell");
+    expect(board.getCell(9, 19) == tetris::CellState::L,
+           "invalid writes must preserve the bottom-right cell");
 }
 
 void testInputMapping() {
@@ -133,6 +184,29 @@ void testInputMapping() {
         "unknown keys must map to None");
 }
 
+void testInputAliasesAndNonGameplayKeys() {
+    const std::pair<char, tetris::InputAction> controlKeys[] = {
+        {'a', tetris::InputAction::MoveLeft},
+        {'d', tetris::InputAction::MoveRight},
+        {'s', tetris::InputAction::MoveDown},
+        {'w', tetris::InputAction::Rotate},
+        {'r', tetris::InputAction::Restart},
+        {'q', tetris::InputAction::Quit}};
+
+    for (const auto [key, action] : controlKeys) {
+        expect(tetris::Input::fromCharacter(key) == action,
+               "lowercase control key must map to its action");
+        expect(tetris::Input::fromCharacter(
+                   static_cast<char>(key - 'a' + 'A')) == action,
+               "uppercase control key must map to the same action");
+    }
+
+    for (const char key : {' ', '\n', '\0', '0'}) {
+        expect(tetris::Input::fromCharacter(key) == tetris::InputAction::None,
+               "non-gameplay key must not trigger an action");
+    }
+}
+
 void testSharedPieceModel() {
     const tetris::ActivePiece piece{
         tetris::TetrominoType::T,
@@ -150,6 +224,30 @@ void testSharedPieceModel() {
     expect(
         moved.rotation == piece.rotation,
         "translation must preserve rotation state");
+}
+
+void testTranslationMovesAllBlocksWithoutChangingTheSource() {
+    const tetris::ActivePiece source{
+        tetris::TetrominoType::L,
+        tetris::RotationState::Right,
+        {5, 4},
+        {{{5, 3}, {5, 4}, {5, 5}, {6, 5}}}};
+    const auto moved = tetris::translated(source, -3, 7);
+
+    expect(moved.origin == tetris::Position{2, 11},
+           "translation must move the rotation origin");
+    for (std::size_t index = 0; index < source.blocks.size(); ++index) {
+        expect(moved.blocks[index] == tetris::Position{
+                   source.blocks[index].x - 3, source.blocks[index].y + 7},
+               "translation must move each block by the same offset");
+    }
+    expect(source.origin == tetris::Position{5, 4},
+           "translation must leave the source origin unchanged");
+    expect(source.blocks == std::array<tetris::Position, 4>{{
+               {5, 3}, {5, 4}, {5, 5}, {6, 5}}},
+           "translation must leave every source block unchanged");
+    expect(moved.type == source.type && moved.rotation == source.rotation,
+           "translation must preserve piece identity and orientation");
 }
 
 void testGeneratedPieceMovement() {
@@ -280,6 +378,26 @@ void testConsoleRendererLayoutAndColors() {
         "the side panel must support the future Game Over state");
 }
 
+void testEveryPlainRendererRowHasTheSameWidth() {
+    const tetris::GameBoard board;
+    const tetris::Tetromino factory;
+    const auto active = factory.createPiece(tetris::TetrominoType::O);
+    const auto next = factory.createPiece(tetris::TetrominoType::I);
+    const tetris::ConsoleRenderer renderer;
+    std::istringstream lines(renderer.buildFrame(
+        board, active, next, 0, false, false));
+
+    std::string line;
+    int rowCount = 0;
+    while (std::getline(lines, line)) {
+        expect(line.size() == 94,
+               "every plain board and sidebar row must be 94 columns wide");
+        ++rowCount;
+    }
+    expect(rowCount == 22,
+           "plain rendering must include 20 play rows and two borders");
+}
+
 void testConsoleRendererHidesBlockedSpawnAfterGameOver() {
     tetris::GameBoard board;
     board.setCell(4, 0, tetris::CellState::Z);
@@ -307,6 +425,29 @@ void testConsoleRendererHidesBlockedSpawnAfterGameOver() {
         "Game Over must not draw the blocked active piece over the board");
 }
 
+void testGameOverFrameIgnoresTheUnspawnedActivePiece() {
+    tetris::GameBoard board;
+    board.setCell(4, 0, tetris::CellState::Z);
+    const tetris::Tetromino factory;
+    const auto blocked = factory.createPiece(tetris::TetrominoType::O);
+    const auto next = factory.createPiece(tetris::TetrominoType::T);
+    const tetris::ConsoleRenderer renderer;
+
+    const std::string blockedFrame = renderer.buildFrame(
+        board, blocked, next, 500, true, false);
+    const std::string movedFrame = renderer.buildFrame(
+        board, tetris::translated(blocked, 1, 3), next, 500, true, false);
+    const std::string playingFrame = renderer.buildFrame(
+        board, blocked, next, 500, false, false);
+
+    expect(blockedFrame == movedFrame,
+           "Game Over frame must depend only on locked board cells");
+    expect(blockedFrame != playingFrame,
+           "the playing frame must still draw the active piece");
+    expect(blockedFrame.find("GAME OVER") != std::string::npos,
+           "Game Over frame must explain why gameplay stopped");
+}
+
 void testFeatureHeadersCompileAsContracts() {
     static_assert(std::is_default_constructible_v<tetris::Tetromino>);
     static_assert(std::is_default_constructible_v<tetris::Collision>);
@@ -321,13 +462,19 @@ int main() {
         testBoardDimensions();
         testBoardCellsAndReset();
         testCellStateContract();
+        testEveryTetrominoTypeRetainsItsBoardIdentity();
         testBoardBoundaries();
+        testInvalidBoardWritesLeaveCellsUntouched();
         testInputMapping();
+        testInputAliasesAndNonGameplayKeys();
         testSharedPieceModel();
+        testTranslationMovesAllBlocksWithoutChangingTheSource();
         testGeneratedPieceMovement();
         testTickAndRestart();
         testConsoleRendererLayoutAndColors();
+        testEveryPlainRendererRowHasTheSameWidth();
         testConsoleRendererHidesBlockedSpawnAfterGameOver();
+        testGameOverFrameIgnoresTheUnspawnedActivePiece();
         testFeatureHeadersCompileAsContracts();
     } catch (const std::exception& error) {
         std::cerr << "Core test failed: " << error.what() << '\n';

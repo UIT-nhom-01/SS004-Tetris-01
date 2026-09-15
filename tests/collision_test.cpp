@@ -157,6 +157,25 @@ void testClearWithoutFullLinesKeepsBoard() {
            "isolated block must stay untouched");
 }
 
+void testNoLineClearPreservesEveryCell() {
+    tetris::Collision collision;
+    tetris::GameBoard board;
+    for (int y = 0; y < board.height(); ++y) {
+        board.setCell(y % board.width(), y, tetris::CellState::S);
+        board.setCell((y + 3) % board.width(), y, tetris::CellState::L);
+    }
+    const tetris::GameBoard before = board;
+
+    expect(collision.clearCompletedLines(board) == 0,
+           "partial rows must not be cleared");
+    for (int y = 0; y < board.height(); ++y) {
+        for (int x = 0; x < board.width(); ++x) {
+            expect(board.getCell(x, y) == before.getCell(x, y),
+                   "a no-op line clear must preserve every typed cell");
+        }
+    }
+}
+
 void testClearSingleLineShiftsRowsDown() {
     tetris::Collision collision;
     tetris::GameBoard board;
@@ -200,6 +219,33 @@ void testClearMultipleConsecutiveLines() {
         for (int x = 0; x < board.width(); ++x) {
             expect(board.getCell(x, y) == tetris::CellState::Empty,
                    "cleared region must be empty");
+        }
+    }
+}
+
+void testSeparatedCompletedLinesKeepSurvivorOrderAndTypes() {
+    tetris::Collision collision;
+    tetris::GameBoard board;
+    for (int x = 0; x < board.width(); ++x) {
+        board.setCell(x, 17, tetris::CellState::Z);
+        board.setCell(x, 19, tetris::CellState::J);
+    }
+    board.setCell(4, 15, tetris::CellState::I);
+    board.setCell(9, 16, tetris::CellState::T);
+    board.setCell(0, 18, tetris::CellState::O);
+
+    expect(collision.clearCompletedLines(board) == 2,
+           "two separated completed lines must clear in one pass");
+    expect(board.getCell(0, 19) == tetris::CellState::O,
+           "lowest surviving row must land at the bottom");
+    expect(board.getCell(9, 18) == tetris::CellState::T,
+           "middle surviving row must retain its position and type");
+    expect(board.getCell(4, 17) == tetris::CellState::I,
+           "highest surviving row must stay above the other survivors");
+    for (int y = 0; y < 17; ++y) {
+        for (int x = 0; x < board.width(); ++x) {
+            expect(board.getCell(x, y) == tetris::CellState::Empty,
+                   "rows without surviving blocks must remain empty");
         }
     }
 }
@@ -283,6 +329,48 @@ void testGameRotationAppliesTetrominoCandidate() {
            "rotation input must use Tetromino block coordinates");
 }
 
+void testGameRejectsRotationIntoALockedCellAtomically() {
+    tetris::Game game;
+    for (int attempt = 0;
+         attempt < 100 && game.activePiece().type == tetris::TetrominoType::O;
+         ++attempt) {
+        game.restart();
+    }
+    expect(game.activePiece().type != tetris::TetrominoType::O,
+           "test setup must obtain a shape with changing rotation blocks");
+
+    const tetris::Tetromino factory;
+    const tetris::ActivePiece original = game.activePiece();
+    const tetris::ActivePiece candidate = factory.getRotated(original);
+    auto& board = const_cast<tetris::GameBoard&>(game.board());
+    bool foundCandidateOnlyCell = false;
+    for (const tetris::Position& block : candidate.blocks) {
+        if (std::find(original.blocks.begin(), original.blocks.end(), block) ==
+            original.blocks.end()) {
+            board.setCell(block.x, block.y, tetris::CellState::Z);
+            foundCandidateOnlyCell = true;
+            break;
+        }
+    }
+    expect(foundCandidateOnlyCell,
+           "test setup must block a new cell used by the rotated candidate");
+    const tetris::GameBoard beforeBoard = board;
+
+    expect(!game.rotateCurrentPiece(),
+           "rotation into a locked cell must be rejected");
+    expect(game.activePiece().type == original.type &&
+               game.activePiece().rotation == original.rotation &&
+               game.activePiece().origin == original.origin &&
+               game.activePiece().blocks == original.blocks,
+           "rejected rotation must preserve the complete active piece");
+    for (int y = 0; y < board.height(); ++y) {
+        for (int x = 0; x < board.width(); ++x) {
+            expect(board.getCell(x, y) == beforeBoard.getCell(x, y),
+                   "rejected rotation must not alter locked cells");
+        }
+    }
+}
+
 }  // namespace
 
 int main() {
@@ -293,12 +381,15 @@ int main() {
         testLockPieceStoresTypeAndColor();
         testLockedPieceCompletesAndClearsLine();
         testClearWithoutFullLinesKeepsBoard();
+        testNoLineClearPreservesEveryCell();
         testClearSingleLineShiftsRowsDown();
         testClearMultipleConsecutiveLines();
+        testSeparatedCompletedLinesKeepSurvivorOrderAndTypes();
         testClearTopLineEmptiesReplacementCells();
         testGameTickLocksPieceAndPromotesNextPiece();
         testGameMovementRejectsBlockedCandidates();
         testGameRotationAppliesTetrominoCandidate();
+        testGameRejectsRotationIntoALockedCellAtomically();
         std::cout << "collision_test: all passed\n";
         return 0;
     } catch (const std::exception& ex) {
