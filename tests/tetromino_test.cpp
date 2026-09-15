@@ -41,6 +41,27 @@ void testCreateEachType() {
     }
 }
 
+void testAllSpawnPiecesFitTheTopOfTheBoard() {
+    tetris::Tetromino factory;
+    for (const auto type : {
+             tetris::TetrominoType::I, tetris::TetrominoType::O,
+             tetris::TetrominoType::T, tetris::TetrominoType::S,
+             tetris::TetrominoType::Z, tetris::TetrominoType::J,
+             tetris::TetrominoType::L}) {
+        const auto piece = factory.createPiece(type);
+        expect(piece.origin.x >= 3 && piece.origin.x <= 6,
+               "spawn origin must remain near the board center");
+        expect(piece.origin.y >= 0 && piece.origin.y < 3,
+               "spawn origin must be in the top rows");
+        for (const auto block : piece.blocks) {
+            expect(block.x >= 0 && block.x < 10,
+                   "every spawn block must fit within board width");
+            expect(block.y >= 0 && block.y < 3,
+                   "every spawn block must fit within the top rows");
+        }
+    }
+}
+
 void testRandomTypesAreValid() {
     tetris::Tetromino factory;
     for (int i = 0; i < 50; ++i) {
@@ -83,6 +104,7 @@ void testGetRotatedDoesNotMutateInput() {
 int main() {
     try {
         testCreateEachType();
+        testAllSpawnPiecesFitTheTopOfTheBoard();
         testRandomTypesAreValid();
         testRotateFourTimesReturnsOriginalBlocks();
         testRotateOUnchangedShape();
