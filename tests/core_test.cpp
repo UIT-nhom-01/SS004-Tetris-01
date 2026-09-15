@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 namespace {
 
@@ -180,6 +181,29 @@ void testInputMapping() {
     expect(
         tetris::Input::fromCharacter('x') == tetris::InputAction::None,
         "unknown keys must map to None");
+}
+
+void testInputAliasesAndNonGameplayKeys() {
+    const std::pair<char, tetris::InputAction> controlKeys[] = {
+        {'a', tetris::InputAction::MoveLeft},
+        {'d', tetris::InputAction::MoveRight},
+        {'s', tetris::InputAction::MoveDown},
+        {'w', tetris::InputAction::Rotate},
+        {'r', tetris::InputAction::Restart},
+        {'q', tetris::InputAction::Quit}};
+
+    for (const auto [key, action] : controlKeys) {
+        expect(tetris::Input::fromCharacter(key) == action,
+               "lowercase control key must map to its action");
+        expect(tetris::Input::fromCharacter(
+                   static_cast<char>(key - 'a' + 'A')) == action,
+               "uppercase control key must map to the same action");
+    }
+
+    for (const char key : {' ', '\n', '\0', '0'}) {
+        expect(tetris::Input::fromCharacter(key) == tetris::InputAction::None,
+               "non-gameplay key must not trigger an action");
+    }
 }
 
 void testSharedPieceModel() {
@@ -374,6 +398,7 @@ int main() {
         testBoardBoundaries();
         testInvalidBoardWritesLeaveCellsUntouched();
         testInputMapping();
+        testInputAliasesAndNonGameplayKeys();
         testSharedPieceModel();
         testGeneratedPieceMovement();
         testTickAndRestart();
