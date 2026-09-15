@@ -109,6 +109,29 @@ void testBoardBoundaries() {
     expect(threw, "reading outside the board must throw");
 }
 
+void testInvalidBoardWritesLeaveCellsUntouched() {
+    tetris::GameBoard board;
+    board.setCell(0, 0, tetris::CellState::I);
+    board.setCell(9, 19, tetris::CellState::L);
+
+    const tetris::Position invalidPositions[] = {
+        {-1, 0}, {10, 0}, {0, -1}, {0, 20}};
+    for (const tetris::Position position : invalidPositions) {
+        bool threw = false;
+        try {
+            board.setCell(position.x, position.y, tetris::CellState::Z);
+        } catch (const std::out_of_range&) {
+            threw = true;
+        }
+        expect(threw, "writing outside the board must throw");
+    }
+
+    expect(board.getCell(0, 0) == tetris::CellState::I,
+           "invalid writes must preserve the top-left cell");
+    expect(board.getCell(9, 19) == tetris::CellState::L,
+           "invalid writes must preserve the bottom-right cell");
+}
+
 void testInputMapping() {
     expect(
         tetris::Input::fromCharacter('a') == tetris::InputAction::MoveLeft,
@@ -322,6 +345,7 @@ int main() {
         testBoardCellsAndReset();
         testCellStateContract();
         testBoardBoundaries();
+        testInvalidBoardWritesLeaveCellsUntouched();
         testInputMapping();
         testSharedPieceModel();
         testGeneratedPieceMovement();
