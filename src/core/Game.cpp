@@ -50,29 +50,11 @@ private:
     bool active_;
 };
 
-// Keeps the core loop runnable until Huy's Tetromino generator is integrated.
-ActivePiece makeTemporaryActivePiece() {
-    return ActivePiece{
-        TetrominoType::O,
-        RotationState::Spawn,
-        {4, 0},
-        {{{4, 0}, {5, 0}, {4, 1}, {5, 1}}}};
-}
-
-// Exercises the preview contract without implementing random piece generation.
-ActivePiece makeTemporaryNextPiece() {
-    return ActivePiece{
-        TetrominoType::T,
-        RotationState::Spawn,
-        {4, 1},
-        {{{3, 1}, {4, 1}, {5, 1}, {4, 2}}}};
-}
-
 }  // namespace
 
-Game::Game()
-    : activePiece_(makeTemporaryActivePiece()),
-      nextPiece_(makeTemporaryNextPiece()) {}
+Game::Game() {
+    restart();
+}
 
 void Game::run() {
     using Clock = std::chrono::steady_clock;
@@ -110,14 +92,29 @@ void Game::run() {
 }
 
 bool Game::moveCurrentPiece(int dx, int dy) {
+    if (gameState_.isGameOver()) {
+        return false;
+    }
+
     const ActivePiece candidate = translated(activePiece_, dx, dy);
 
-    // TODO(Tu): replace boundary-only validation with
-    // Collision::canPlace(board_, candidate) during integration.
-    for (const Position& block : candidate.blocks) {
-        if (!board_.isInside(block.x, block.y)) {
-            return false;
-        }
+    if (!collision_.canPlace(board_, candidate)) {
+        return false;
+    }
+
+    activePiece_ = candidate;
+    return true;
+}
+
+bool Game::rotateCurrentPiece() {
+    if (gameState_.isGameOver()) {
+        return false;
+    }
+
+    const ActivePiece candidate = tetromino_.getRotated(activePiece_);
+
+    if (!collision_.canPlace(board_, candidate)) {
+        return false;
     }
 
     activePiece_ = candidate;
@@ -125,26 +122,32 @@ bool Game::moveCurrentPiece(int dx, int dy) {
 }
 
 bool Game::tick() {
+    if (gameState_.isGameOver()) {
+        return false;
+    }
+
     if (moveCurrentPiece(0, 1)) {
         return true;
     }
 
-    // TODO(Tu): lock the piece and clear completed lines.
-    // Scoring consumes the cleared-line count once Collision::clearCompletedLines lands.
-    // TODO(Huy): promote nextPiece_ and generate the following preview piece.
-    // TODO(Khanh): set Game Over when the next piece cannot spawn.
-    return false;
+    collision_.lockPiece(board_, activePiece_);
+    scoring_.addLines(collision_.clearCompletedLines(board_));
+    activePiece_ = nextPiece_;
+    nextPiece_ = tetromino_.createPiece();
+    // Game Over when the promoted piece overlaps the stack at its spawn position.
+    gameState_.updateAfterSpawn(collision_.canPlace(board_, activePiece_));
+    return true;
 }
 
 void Game::restart() {
     board_.reset();
-    activePiece_ = makeTemporaryActivePiece();
-    nextPiece_ = makeTemporaryNextPiece();
+    scoring_.reset();
+    gameState_.reset();
+    activePiece_ = tetromino_.createPiece();
+    nextPiece_ = tetromino_.createPiece();
+    gameState_.updateAfterSpawn(collision_.canPlace(board_, activePiece_));
     running_ = true;
 
-    scoring_.reset();
-    // TODO(Khanh): reset GameState during integration.
-    // TODO(Huy): replace both temporary pieces using the Tetromino generator.
 }
 
 const GameBoard& Game::board() const {
@@ -159,6 +162,14 @@ const ActivePiece& Game::nextPiece() const {
     return nextPiece_;
 }
 
+int Game::score() const {
+    return scoring_.getScore();
+}
+
+bool Game::isGameOver() const {
+    return gameState_.isGameOver();
+}
+
 const Scoring& Game::scoring() const {
     return scoring_;
 }
@@ -170,10 +181,10 @@ bool Game::handleInput(InputAction action) {
         case InputAction::MoveRight:
             return moveCurrentPiece(1, 0);
         case InputAction::MoveDown:
-            return moveCurrentPiece(0, 1);
+            // Soft drop follows the same collision/locking flow as gravity.
+            return tick();
         case InputAction::Rotate:
-            // TODO(Huy): integrate Tetromino rotation.
-            return false;
+            return rotateCurrentPiece();
         case InputAction::Restart:
             restart();
             return true;
@@ -194,9 +205,13 @@ void Game::render() const {
         std::cout << "\x1B[2J\x1B[H";
     }
 
-    // TODO(Khanh): replace false with GameState::isGameOver().
     std::cout << renderer_.buildFrame(
-        board_, activePiece_, nextPiece_, scoring_.getScore(), false, useTerminalFeatures)
+        board_,
+        activePiece_,
+        nextPiece_,
+        scoring_.getScore(),
+        gameState_.isGameOver(),
+        useTerminalFeatures)
               << std::flush;
 }
 

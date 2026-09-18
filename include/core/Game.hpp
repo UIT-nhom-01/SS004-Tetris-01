@@ -1,10 +1,13 @@
 #pragma once
 
 #include "core/ConsoleRenderer.hpp"
+#include "features/Collision.hpp"
 #include "core/GameBoard.hpp"
 #include "core/Input.hpp"
 #include "core/Types.hpp"
+#include "features/GameState.hpp"
 #include "features/Scoring.hpp"
+#include "features/Tetromino.hpp"
 
 namespace tetris {
 
@@ -20,19 +23,25 @@ public:
     void run();
 
     /// Applies a translation only when every candidate block is placeable.
-    /// Occupied-cell validation is delegated to Collision after integration.
+    /// Occupied-cell validation is delegated to Collision.
+    /// Movement and rotation are rejected after Game Over.
     bool moveCurrentPiece(int dx, int dy);
+    bool rotateCurrentPiece();
 
     /// Advances gravity by one row; returns true when game state changed.
+    /// Returns false without changing state after Game Over.
     bool tick();
 
-    /// Restores a new-game state without restarting the process.
+    /// Resets board, score, and Game Over state, then spawns new pieces
+    /// without restarting the process.
     void restart();
 
-    /// Exposes read-only state for feature integration and tests.
+    /// Exposes the current session state without allowing external mutation.
     [[nodiscard]] const GameBoard& board() const;
     [[nodiscard]] const ActivePiece& activePiece() const;
     [[nodiscard]] const ActivePiece& nextPiece() const;
+    [[nodiscard]] int score() const;
+    [[nodiscard]] bool isGameOver() const;
     [[nodiscard]] const Scoring& scoring() const;
 
 private:
@@ -42,9 +51,12 @@ private:
     GameBoard board_;
     ActivePiece activePiece_;
     ActivePiece nextPiece_;
+    Tetromino tetromino_;
+    Collision collision_;
+    Scoring scoring_;
+    GameState gameState_;
     Input input_;
     ConsoleRenderer renderer_;
-    Scoring scoring_;
     bool running_{true};
 };
 

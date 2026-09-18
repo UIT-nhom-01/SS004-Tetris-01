@@ -13,8 +13,7 @@ add_library(tetris_core
     src/core/Input.cpp
 )
 
-# Feature implementations are discovered automatically so each member can work
-# mainly inside their own feature folder without editing this shared file.
+# Compile every gameplay module into the core game library.
 file(GLOB_RECURSE TETRIS_FEATURE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/features/*.cpp"
 )
@@ -38,9 +37,24 @@ enable_testing()
 
 add_executable(core_test tests/core_test.cpp)
 target_link_libraries(core_test PRIVATE tetris_core)
+add_test(NAME core_test COMMAND core_test)
 
 add_executable(tetromino_test tests/tetromino_test.cpp)
 target_link_libraries(tetromino_test PRIVATE tetris_core)
-
-add_test(NAME core_test COMMAND core_test)
 add_test(NAME tetromino_test COMMAND tetromino_test)
+
+add_executable(collision_test tests/collision_test.cpp)
+target_link_libraries(collision_test PRIVATE tetris_core)
+add_test(NAME collision_test COMMAND collision_test)
+
+add_executable(scoring_test tests/scoring_test.cpp)
+target_link_libraries(scoring_test PRIVATE tetris_core)
+add_test(NAME scoring_test COMMAND scoring_test)
+
+add_executable(game_state_test tests/game_state_test.cpp)
+target_link_libraries(game_state_test PRIVATE tetris_core)
+add_test(NAME game_state_test COMMAND game_state_test)
+
+add_executable(integration_test tests/integration_test.cpp)
+target_link_libraries(integration_test PRIVATE tetris_core)
+add_test(NAME integration_test COMMAND integration_test)
