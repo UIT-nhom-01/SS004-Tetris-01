@@ -80,7 +80,7 @@ void Game::run() {
     TerminalScreen terminalScreen;
     render();
     // steady_clock prevents system clock changes from affecting gravity timing.
-    auto nextFall = Clock::now() + std::chrono::milliseconds(FALL_INTERVAL_MS);
+    auto nextFall = Clock::now() + std::chrono::milliseconds(scoring_.getDropIntervalMs());
 
     while (running_) {
         bool stateChanged = false;
@@ -92,10 +92,10 @@ void Game::run() {
         const auto now = Clock::now();
         if (action == InputAction::Restart) {
             // A restarted piece always receives a complete first fall interval.
-            nextFall = now + std::chrono::milliseconds(FALL_INTERVAL_MS);
+            nextFall = now + std::chrono::milliseconds(scoring_.getDropIntervalMs());
         } else if (running_ && now >= nextFall) {
             stateChanged = tick() || stateChanged;
-            nextFall = now + std::chrono::milliseconds(FALL_INTERVAL_MS);
+            nextFall = now + std::chrono::milliseconds(scoring_.getDropIntervalMs());
         }
 
         if (running_ && stateChanged) {
@@ -130,7 +130,7 @@ bool Game::tick() {
     }
 
     // TODO(Tu): lock the piece and clear completed lines.
-    // TODO(Gam): update the score using the cleared-line count.
+    // Scoring consumes the cleared-line count once Collision::clearCompletedLines lands.
     // TODO(Huy): promote nextPiece_ and generate the following preview piece.
     // TODO(Khanh): set Game Over when the next piece cannot spawn.
     return false;
@@ -142,7 +142,7 @@ void Game::restart() {
     nextPiece_ = makeTemporaryNextPiece();
     running_ = true;
 
-    // TODO(Gam): reset Scoring during integration.
+    scoring_.reset();
     // TODO(Khanh): reset GameState during integration.
     // TODO(Huy): replace both temporary pieces using the Tetromino generator.
 }
@@ -157,6 +157,10 @@ const ActivePiece& Game::activePiece() const {
 
 const ActivePiece& Game::nextPiece() const {
     return nextPiece_;
+}
+
+const Scoring& Game::scoring() const {
+    return scoring_;
 }
 
 bool Game::handleInput(InputAction action) {
@@ -190,10 +194,9 @@ void Game::render() const {
         std::cout << "\x1B[2J\x1B[H";
     }
 
-    // TODO(Gam): replace zero with Scoring::getScore() during integration.
     // TODO(Khanh): replace false with GameState::isGameOver().
     std::cout << renderer_.buildFrame(
-        board_, activePiece_, nextPiece_, 0, false, useTerminalFeatures)
+        board_, activePiece_, nextPiece_, scoring_.getScore(), false, useTerminalFeatures)
               << std::flush;
 }
 
