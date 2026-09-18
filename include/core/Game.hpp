@@ -4,6 +4,7 @@
 #include "core/GameBoard.hpp"
 #include "core/Input.hpp"
 #include "core/Types.hpp"
+#include "features/Scoring.hpp"
 
 namespace tetris {
 
@@ -32,6 +33,7 @@ public:
     [[nodiscard]] const GameBoard& board() const;
     [[nodiscard]] const ActivePiece& activePiece() const;
     [[nodiscard]] const ActivePiece& nextPiece() const;
+    [[nodiscard]] const Scoring& scoring() const;
 
 private:
     bool handleInput(InputAction action);
@@ -42,6 +44,7 @@ private:
     ActivePiece nextPiece_;
     Input input_;
     ConsoleRenderer renderer_;
+    Scoring scoring_;
     bool running_{true};
 };
 
