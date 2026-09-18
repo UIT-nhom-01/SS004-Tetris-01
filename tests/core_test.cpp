@@ -10,9 +10,11 @@
 
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 namespace {
 
@@ -20,6 +22,30 @@ void expect(bool condition, const std::string& message) {
     if (!condition) {
         throw std::runtime_error(message);
     }
+}
+
+int minBlockX(const tetris::ActivePiece& piece) {
+    return std::min_element(
+               piece.blocks.begin(),
+               piece.blocks.end(),
+               [](const auto& lhs, const auto& rhs) { return lhs.x < rhs.x; })
+        ->x;
+}
+
+int maxBlockX(const tetris::ActivePiece& piece) {
+    return std::max_element(
+               piece.blocks.begin(),
+               piece.blocks.end(),
+               [](const auto& lhs, const auto& rhs) { return lhs.x < rhs.x; })
+        ->x;
+}
+
+int maxBlockY(const tetris::ActivePiece& piece) {
+    return std::max_element(
+               piece.blocks.begin(),
+               piece.blocks.end(),
+               [](const auto& lhs, const auto& rhs) { return lhs.y < rhs.y; })
+        ->y;
 }
 
 void testBoardDimensions() {
@@ -67,6 +93,32 @@ void testCellStateContract() {
         "every Tetromino type must have a storable board state");
 }
 
+void testEveryTetrominoTypeRetainsItsBoardIdentity() {
+    const std::pair<tetris::TetrominoType, tetris::CellState> typedCells[] = {
+        {tetris::TetrominoType::I, tetris::CellState::I},
+        {tetris::TetrominoType::O, tetris::CellState::O},
+        {tetris::TetrominoType::T, tetris::CellState::T},
+        {tetris::TetrominoType::S, tetris::CellState::S},
+        {tetris::TetrominoType::Z, tetris::CellState::Z},
+        {tetris::TetrominoType::J, tetris::CellState::J},
+        {tetris::TetrominoType::L, tetris::CellState::L}};
+    tetris::GameBoard board;
+
+    for (int index = 0; index < 7; ++index) {
+        const auto [type, state] = typedCells[index];
+        expect(tetris::cellStateFor(type) == state,
+               "each Tetromino must map to its own board state");
+        expect(tetris::isOccupied(state),
+               "every typed board state must be occupied");
+        board.setCell(index, 19, state);
+    }
+
+    for (int index = 0; index < 7; ++index) {
+        expect(board.getCell(index, 19) == typedCells[index].second,
+               "board cells must retain each Tetromino identity");
+    }
+}
+
 void testBoardBoundaries() {
     const tetris::GameBoard board;
     expect(board.isInside(0, 0), "top-left position must be inside");
@@ -83,6 +135,29 @@ void testBoardBoundaries() {
         threw = true;
     }
     expect(threw, "reading outside the board must throw");
+}
+
+void testInvalidBoardWritesLeaveCellsUntouched() {
+    tetris::GameBoard board;
+    board.setCell(0, 0, tetris::CellState::I);
+    board.setCell(9, 19, tetris::CellState::L);
+
+    const tetris::Position invalidPositions[] = {
+        {-1, 0}, {10, 0}, {0, -1}, {0, 20}};
+    for (const tetris::Position position : invalidPositions) {
+        bool threw = false;
+        try {
+            board.setCell(position.x, position.y, tetris::CellState::Z);
+        } catch (const std::out_of_range&) {
+            threw = true;
+        }
+        expect(threw, "writing outside the board must throw");
+    }
+
+    expect(board.getCell(0, 0) == tetris::CellState::I,
+           "invalid writes must preserve the top-left cell");
+    expect(board.getCell(9, 19) == tetris::CellState::L,
+           "invalid writes must preserve the bottom-right cell");
 }
 
 void testInputMapping() {
@@ -109,6 +184,29 @@ void testInputMapping() {
         "unknown keys must map to None");
 }
 
+void testInputAliasesAndNonGameplayKeys() {
+    const std::pair<char, tetris::InputAction> controlKeys[] = {
+        {'a', tetris::InputAction::MoveLeft},
+        {'d', tetris::InputAction::MoveRight},
+        {'s', tetris::InputAction::MoveDown},
+        {'w', tetris::InputAction::Rotate},
+        {'r', tetris::InputAction::Restart},
+        {'q', tetris::InputAction::Quit}};
+
+    for (const auto [key, action] : controlKeys) {
+        expect(tetris::Input::fromCharacter(key) == action,
+               "lowercase control key must map to its action");
+        expect(tetris::Input::fromCharacter(
+                   static_cast<char>(key - 'a' + 'A')) == action,
+               "uppercase control key must map to the same action");
+    }
+
+    for (const char key : {' ', '\n', '\0', '0'}) {
+        expect(tetris::Input::fromCharacter(key) == tetris::InputAction::None,
+               "non-gameplay key must not trigger an action");
+    }
+}
+
 void testSharedPieceModel() {
     const tetris::ActivePiece piece{
         tetris::TetrominoType::T,
@@ -128,29 +226,65 @@ void testSharedPieceModel() {
         "translation must preserve rotation state");
 }
 
-void testTemporaryPieceMovement() {
+void testTranslationMovesAllBlocksWithoutChangingTheSource() {
+    const tetris::ActivePiece source{
+        tetris::TetrominoType::L,
+        tetris::RotationState::Right,
+        {5, 4},
+        {{{5, 3}, {5, 4}, {5, 5}, {6, 5}}}};
+    const auto moved = tetris::translated(source, -3, 7);
+
+    expect(moved.origin == tetris::Position{2, 11},
+           "translation must move the rotation origin");
+    for (std::size_t index = 0; index < source.blocks.size(); ++index) {
+        expect(moved.blocks[index] == tetris::Position{
+                   source.blocks[index].x - 3, source.blocks[index].y + 7},
+               "translation must move each block by the same offset");
+    }
+    expect(source.origin == tetris::Position{5, 4},
+           "translation must leave the source origin unchanged");
+    expect(source.blocks == std::array<tetris::Position, 4>{{
+               {5, 3}, {5, 4}, {5, 5}, {6, 5}}},
+           "translation must leave every source block unchanged");
+    expect(moved.type == source.type && moved.rotation == source.rotation,
+           "translation must preserve piece identity and orientation");
+}
+
+void testGeneratedPieceMovement() {
     tetris::Game game;
     expect(game.activePiece().blocks.size() == 4, "a piece must contain four blocks");
 
-    expect(game.moveCurrentPiece(-4, 0), "piece must move to the left edge");
-    expect(game.activePiece().blocks[0].x == 0, "piece must reach x=0");
+    const int distanceToLeftEdge = -minBlockX(game.activePiece());
+    expect(game.moveCurrentPiece(distanceToLeftEdge, 0),
+           "piece must move to the left edge");
+    expect(minBlockX(game.activePiece()) == 0, "piece must reach x=0");
     expect(!game.moveCurrentPiece(-1, 0), "piece must not cross the left edge");
-    expect(game.activePiece().blocks[0].x == 0, "rejected move must be atomic");
+    expect(minBlockX(game.activePiece()) == 0, "rejected move must be atomic");
 
-    expect(game.moveCurrentPiece(8, 0), "piece must move to the right edge");
-    expect(game.activePiece().blocks[1].x == 9, "piece must reach x=9");
+    const int distanceToRightEdge =
+        tetris::GameBoard::WIDTH - 1 - maxBlockX(game.activePiece());
+    expect(game.moveCurrentPiece(distanceToRightEdge, 0),
+           "piece must move to the right edge");
+    expect(maxBlockX(game.activePiece()) == 9, "piece must reach x=9");
     expect(!game.moveCurrentPiece(1, 0), "piece must not cross the right edge");
-    expect(game.activePiece().blocks[1].x == 9, "rejected move must be atomic");
+    expect(maxBlockX(game.activePiece()) == 9, "rejected move must be atomic");
 
-    expect(game.moveCurrentPiece(0, 18), "piece must move to the bottom edge");
-    expect(game.activePiece().blocks[3].y == 19, "piece must reach y=19");
+    const int distanceToFloor =
+        tetris::GameBoard::HEIGHT - 1 - maxBlockY(game.activePiece());
+    expect(game.moveCurrentPiece(0, distanceToFloor),
+           "piece must move to the bottom edge");
+    expect(maxBlockY(game.activePiece()) == 19, "piece must reach y=19");
     expect(!game.moveCurrentPiece(0, 1), "piece must not cross the bottom edge");
-    expect(game.activePiece().blocks[3].y == 19, "rejected move must be atomic");
+    expect(maxBlockY(game.activePiece()) == 19, "rejected move must be atomic");
 }
 
 void testTickAndRestart() {
     tetris::Game game;
+    tetris::Collision collision;
     const tetris::Position initialOrigin = game.activePiece().origin;
+
+    expect(collision.canPlace(game.board(), game.activePiece()),
+           "generated active piece must have a valid spawn position");
 
     expect(game.tick(), "gravity tick must move a placeable piece down");
     expect(
@@ -158,17 +292,16 @@ void testTickAndRestart() {
             tetris::Position{initialOrigin.x, initialOrigin.y + 1},
         "gravity tick must update piece origin");
 
-    expect(game.moveCurrentPiece(-2, 3), "test setup move must succeed");
+    expect(game.moveCurrentPiece(0, 2), "test setup move must succeed");
     game.restart();
-    expect(
-        game.activePiece().origin == initialOrigin,
-        "restart must restore the spawn origin");
-    expect(
-        game.activePiece().type == tetris::TetrominoType::O,
-        "baseline restart must restore the temporary piece");
-    expect(
-        game.nextPiece().type == tetris::TetrominoType::T,
-        "baseline restart must restore the temporary preview piece");
+    expect(!game.isGameOver(), "restart must return the game to a running state");
+    expect(game.score() == 0, "restart must reset score");
+    expect(game.activePiece().rotation == tetris::RotationState::Spawn,
+           "restart must generate an active piece in spawn orientation");
+    expect(game.nextPiece().rotation == tetris::RotationState::Spawn,
+           "restart must generate a preview piece in spawn orientation");
+    expect(collision.canPlace(game.board(), game.activePiece()),
+           "restarted active piece must be placeable on the reset board");
 }
 
 void testScoringLevelSystem() {
@@ -229,7 +362,7 @@ void testConsoleRendererLayoutAndColors() {
         std::count(plainFrame.begin(), plainFrame.end(), '\n') == 22,
         "a frame must match the board's 20 rows plus two borders");
     expect(
-        plainFrame.find('\n') == 59,
+        plainFrame.find('\n') == 94,
         "board and side panel must have a stable one-line width");
     expect(
         plainFrame.find("SCORE") != std::string::npos &&
@@ -239,6 +372,9 @@ void testConsoleRendererLayoutAndColors() {
         plainFrame.find("NEXT PIECE") != std::string::npos &&
             plainFrame.find("CONTROLS") != std::string::npos,
         "side panel must include preview and controls sections");
+    expect(
+        plainFrame.find("Restart: R     Quit: Q") != std::string::npos,
+        "restart and quit controls must share the compact final row");
     expect(
         plainFrame.find("\x1B[") == std::string::npos,
         "plain rendering must not contain ANSI escape codes");
@@ -271,6 +407,76 @@ void testConsoleRendererLayoutAndColors() {
         "the side panel must support the future Game Over state");
 }
 
+void testEveryPlainRendererRowHasTheSameWidth() {
+    const tetris::GameBoard board;
+    const tetris::Tetromino factory;
+    const auto active = factory.createPiece(tetris::TetrominoType::O);
+    const auto next = factory.createPiece(tetris::TetrominoType::I);
+    const tetris::ConsoleRenderer renderer;
+    std::istringstream lines(renderer.buildFrame(
+        board, active, next, 0, false, false));
+
+    std::string line;
+    int rowCount = 0;
+    while (std::getline(lines, line)) {
+        expect(line.size() == 94,
+               "every plain board and sidebar row must be 94 columns wide");
+        ++rowCount;
+    }
+    expect(rowCount == 22,
+           "plain rendering must include 20 play rows and two borders");
+}
+
+void testConsoleRendererHidesBlockedSpawnAfterGameOver() {
+    tetris::GameBoard board;
+    board.setCell(4, 0, tetris::CellState::Z);
+
+    const tetris::ActivePiece blockedPiece{
+        tetris::TetrominoType::O,
+        tetris::RotationState::Spawn,
+        {4, 0},
+        {{{4, 0}, {5, 0}, {4, 1}, {5, 1}}}};
+    const tetris::ActivePiece nextPiece{
+        tetris::TetrominoType::T,
+        tetris::RotationState::Spawn,
+        {4, 1},
+        {{{3, 1}, {4, 1}, {5, 1}, {4, 2}}}};
+
+    const tetris::ConsoleRenderer renderer;
+    const std::string frame = renderer.buildFrame(
+        board, blockedPiece, nextPiece, 0, true, true);
+
+    expect(
+        frame.find("\x1B[41m") != std::string::npos,
+        "Game Over must reveal the locked block that prevented spawning");
+    expect(
+        frame.find("\x1B[43m") == std::string::npos,
+        "Game Over must not draw the blocked active piece over the board");
+}
+
+void testGameOverFrameIgnoresTheUnspawnedActivePiece() {
+    tetris::GameBoard board;
+    board.setCell(4, 0, tetris::CellState::Z);
+    const tetris::Tetromino factory;
+    const auto blocked = factory.createPiece(tetris::TetrominoType::O);
+    const auto next = factory.createPiece(tetris::TetrominoType::T);
+    const tetris::ConsoleRenderer renderer;
+
+    const std::string blockedFrame = renderer.buildFrame(
+        board, blocked, next, 500, true, false);
+    const std::string movedFrame = renderer.buildFrame(
+        board, tetris::translated(blocked, 1, 3), next, 500, true, false);
+    const std::string playingFrame = renderer.buildFrame(
+        board, blocked, next, 500, false, false);
+
+    expect(blockedFrame == movedFrame,
+           "Game Over frame must depend only on locked board cells");
+    expect(blockedFrame != playingFrame,
+           "the playing frame must still draw the active piece");
+    expect(blockedFrame.find("GAME OVER") != std::string::npos,
+           "Game Over frame must explain why gameplay stopped");
+}
+
 void testFeatureHeadersCompileAsContracts() {
     static_assert(std::is_default_constructible_v<tetris::Tetromino>);
     static_assert(std::is_default_constructible_v<tetris::Collision>);
@@ -285,13 +491,20 @@ int main() {
         testBoardDimensions();
         testBoardCellsAndReset();
         testCellStateContract();
+        testEveryTetrominoTypeRetainsItsBoardIdentity();
         testBoardBoundaries();
+        testInvalidBoardWritesLeaveCellsUntouched();
         testInputMapping();
+        testInputAliasesAndNonGameplayKeys();
         testSharedPieceModel();
-        testTemporaryPieceMovement();
+        testTranslationMovesAllBlocksWithoutChangingTheSource();
+        testGeneratedPieceMovement();
         testTickAndRestart();
         testScoringLevelSystem();
         testConsoleRendererLayoutAndColors();
+        testEveryPlainRendererRowHasTheSameWidth();
+        testConsoleRendererHidesBlockedSpawnAfterGameOver();
+        testGameOverFrameIgnoresTheUnspawnedActivePiece();
         testFeatureHeadersCompileAsContracts();
     } catch (const std::exception& error) {
         std::cerr << "Core test failed: " << error.what() << '\n';

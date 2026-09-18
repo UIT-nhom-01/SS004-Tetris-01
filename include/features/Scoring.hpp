@@ -19,11 +19,13 @@ public:
     /// Fastest allowed gravity interval in milliseconds.
     static constexpr int MIN_DROP_INTERVAL_MS = 50;
 
-    /// Restores score, level, and cleared-row count to a new-game state.
+    /// Resets score, level, and cleared-row count for a new or restarted session.
     void reset();
 
     /// Adds points for clearing `lineCount` rows in one lock operation.
-    /// Non-positive counts score nothing and change nothing.
+    /// Single/double/triple/Tetris awards 100/300/500/800 points multiplied
+    /// by the level reached before these rows are counted.
+    /// Throws std::invalid_argument when `lineCount` is outside 0-4.
     void addLines(int lineCount);
 
     /// Overrides the derived level (clamped to 1 or higher).
