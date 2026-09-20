@@ -304,6 +304,35 @@ void testTickAndRestart() {
            "restarted active piece must be placeable on the reset board");
 }
 
+void testScoringLevelSystem() {
+    tetris::Scoring scoring;
+    expect(scoring.getScore() == 0, "fresh scoring must start at zero");
+    expect(scoring.getLevel() == 1, "fresh scoring must start at level 1");
+
+    scoring.addLines(1);
+    expect(scoring.getScore() == 100, "single at level 1 must award 100");
+    scoring.addLines(4);
+    expect(scoring.getScore() == 900, "tetris at level 1 must add 800");
+    expect(scoring.getTotalLines() == 5, "cleared rows must accumulate");
+
+    scoring.addLines(4);
+    scoring.addLines(1);
+    expect(scoring.getTotalLines() == 10, "ten rows must be counted");
+    expect(scoring.getScore() == 1800, "rows before level 2 still score at level 1");
+    expect(scoring.getLevel() == 2, "ten cleared rows must reach level 2");
+    expect(
+        scoring.getDropIntervalMs() < tetris::Scoring::BASE_DROP_INTERVAL_MS,
+        "level 2 must fall faster than level 1");
+
+    scoring.addLines(0);
+    expect(scoring.getScore() == 1800, "empty clears must score nothing");
+
+    tetris::Game game;
+    game.restart();
+    expect(game.scoring().getScore() == 0, "restart must reset the score");
+    expect(game.scoring().getLevel() == 1, "restart must reset the level");
+}
+
 void testConsoleRendererLayoutAndColors() {
     tetris::GameBoard board;
     board.setCell(0, 19, tetris::CellState::I);
@@ -471,6 +500,7 @@ int main() {
         testTranslationMovesAllBlocksWithoutChangingTheSource();
         testGeneratedPieceMovement();
         testTickAndRestart();
+        testScoringLevelSystem();
         testConsoleRendererLayoutAndColors();
         testEveryPlainRendererRowHasTheSameWidth();
         testConsoleRendererHidesBlockedSpawnAfterGameOver();

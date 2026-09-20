@@ -42,6 +42,7 @@ public:
     [[nodiscard]] const ActivePiece& nextPiece() const;
     [[nodiscard]] int score() const;
     [[nodiscard]] bool isGameOver() const;
+    [[nodiscard]] const Scoring& scoring() const;
 
 private:
     bool handleInput(InputAction action);

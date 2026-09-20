@@ -68,7 +68,7 @@ Sản phẩm hoàn chỉnh hỗ trợ các chức năng sau:
 | Collision | Kiểm tra biên trái/phải, đáy và các ô đã bị chiếm |
 | Piece Locking | Cố định ActivePiece vào GameBoard khi không thể rơi tiếp |
 | Line Clearing | Phát hiện hàng đầy, xóa hàng và dồn các hàng phía trên xuống |
-| Scoring | Cập nhật và hiển thị điểm dựa trên số hàng được xóa |
+| Scoring | Điểm Guideline x level (100/300/500/800), lên level mỗi 10 hàng, rơi nhanh dần |
 | Color Renderer | Hiển thị màu riêng cho từng loại Tetromino trên terminal hỗ trợ ANSI |
 | Game Over | Kết thúc lượt chơi nếu Tetromino mới không thể xuất hiện ở vị trí spawn |
 | Restart | Reset board, score, game state và sinh Tetromino mới mà không khởi động lại chương trình |

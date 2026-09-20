@@ -62,7 +62,7 @@ void Game::run() {
     TerminalScreen terminalScreen;
     render();
     // steady_clock prevents system clock changes from affecting gravity timing.
-    auto nextFall = Clock::now() + std::chrono::milliseconds(FALL_INTERVAL_MS);
+    auto nextFall = Clock::now() + std::chrono::milliseconds(scoring_.getDropIntervalMs());
 
     while (running_) {
         bool stateChanged = false;
@@ -74,10 +74,10 @@ void Game::run() {
         const auto now = Clock::now();
         if (action == InputAction::Restart) {
             // A restarted piece always receives a complete first fall interval.
-            nextFall = now + std::chrono::milliseconds(FALL_INTERVAL_MS);
+            nextFall = now + std::chrono::milliseconds(scoring_.getDropIntervalMs());
         } else if (running_ && now >= nextFall) {
             stateChanged = tick() || stateChanged;
-            nextFall = now + std::chrono::milliseconds(FALL_INTERVAL_MS);
+            nextFall = now + std::chrono::milliseconds(scoring_.getDropIntervalMs());
         }
 
         if (running_ && stateChanged) {
@@ -147,6 +147,7 @@ void Game::restart() {
     nextPiece_ = tetromino_.createPiece();
     gameState_.updateAfterSpawn(collision_.canPlace(board_, activePiece_));
     running_ = true;
+
 }
 
 const GameBoard& Game::board() const {
@@ -167,6 +168,10 @@ int Game::score() const {
 
 bool Game::isGameOver() const {
     return gameState_.isGameOver();
+}
+
+const Scoring& Game::scoring() const {
+    return scoring_;
 }
 
 bool Game::handleInput(InputAction action) {
