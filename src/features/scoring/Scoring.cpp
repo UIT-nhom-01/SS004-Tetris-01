@@ -18,7 +18,7 @@ int pointsForLines(int lineCount) {
         case 4:
             return 800;
         default:
-            throw std::invalid_argument("lineCount must be between 0 and 4");
+            throw std::invalid_argument("lineCount must be between 1 and 4");
     }
 }
 
