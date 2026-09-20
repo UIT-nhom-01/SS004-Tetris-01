@@ -25,7 +25,8 @@ public:
     /// Adds points for clearing `lineCount` rows in one lock operation.
     /// Single/double/triple/Tetris awards 100/300/500/800 points multiplied
     /// by the level reached before these rows are counted.
-    /// Throws std::invalid_argument when `lineCount` is outside 0-4.
+    /// Throws std::invalid_argument when `lineCount` is outside 1-4.
+    /// A zero count is accepted and changes nothing.
     void addLines(int lineCount);
 
     /// Overrides the derived level (clamped to 1 or higher).
